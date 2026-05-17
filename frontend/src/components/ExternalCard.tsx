@@ -76,12 +76,16 @@ export default function ExternalCard({ c, destinationLat, destinationLng, destin
         <div className="walk-block">
           <div>이 주차장은 목적지 자체 주차장이 아닙니다.</div>
           <div>
-            주차 후 목적지까지 <strong>직선거리 기준 도보 약 {c.walking_minutes}분</strong>
-            {c.distance_m != null ? ` (${c.distance_m}m)` : ""} 이동이 필요합니다.
+            주차 후 목적지까지 <strong>도보 약 {c.walking_minutes}분</strong>
+            {c.walking_route_distance_m != null
+              ? ` (${c.walking_route_distance_m}m, ${c.walking_route_source === "osrm" ? "실 도보 경로" : "직선거리 추정"})`
+              : c.distance_m != null
+              ? ` (${c.distance_m}m, 직선거리)`
+              : ""}{" "}
+            이동이 필요합니다.
           </div>
           <div className="muted" style={{ fontSize: 11 }}>
-            실제 도보 경로는 카카오맵에서 확인하세요.
-            도로/횡단보도/경사에 따라 달라질 수 있습니다.
+            실 경로는 OpenStreetMap 기반 추정치이며 카카오맵에서 한 번 더 확인할 수 있습니다.
           </div>
         </div>
       )}

@@ -35,7 +35,9 @@ export default function ParkingCard({
       </div>
       <div className="meta">
         <span>
-          {c.distance_m}m · 직선거리 기준 도보 약 {c.walk_minutes ?? "?"}분
+          {c.walking_route_distance_m != null
+            ? `${c.walking_route_distance_m}m · 도보 약 ${c.walk_minutes ?? "?"}분 (${c.walking_route_source === "osrm" ? "실 경로" : "직선거리"})`
+            : `${c.distance_m}m · 직선거리 기준 도보 약 ${c.walk_minutes ?? "?"}분`}
         </span>
         {c.type && <span>· {c.type}</span>}
         {c.capacity != null && <span>· 총 {c.capacity}면</span>}
@@ -43,7 +45,10 @@ export default function ParkingCard({
       </div>
       <div className="walk-block">
         <div className="muted" style={{ fontSize: 11 }}>
-          이 주차장은 목적지 자체 주차장이 아닙니다. 실제 도보 경로는 도로/횡단보도/경사에 따라 달라질 수 있습니다.
+          {c.walking_route_source === "osrm"
+            ? "실 도보 경로는 OpenStreetMap 기반 추정치입니다."
+            : "직선거리 추정치 — 실 경로는 다를 수 있습니다."}{" "}
+          이 주차장은 목적지 자체 주차장이 아닙니다.
         </div>
       </div>
       {c.realtime && (

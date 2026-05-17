@@ -18,6 +18,7 @@ from ..utils.geo import walk_minutes_straight
 from . import kakao as kakao_svc
 from . import web_parking_search
 from .parking_classifier import classify_kakao_parking
+from .walking_route import batch_compute as walking_batch_compute
 
 _USABILITY_LABEL = {
     "usable": "추천 가능",
@@ -335,8 +336,17 @@ def collect_external_candidates(
         info.web_search_count = len(web_ext)
         external.extend(web_ext)
 
+    # 좌표 있는 후보에 한해 실 도보 경로(OSRM) 일괄 계산 — 30분 캐시 적중률 높음
+    routable = [c for c in external if c.lat is not None and c.lng is not None]
+    if routable:
+        pairs = [(c.lat, c.lng, lat, lng) for c in routable]  # type: ignore[arg-type]
+        routes = walking_batch_compute(pairs)
+        for c, r in zip(routable, routes):
+            c.walking_route_distance_m = r["distance_m"]
+            c.walking_minutes = r["walking_minutes"]
+            c.walking_route_source = r["source"]  # type: ignore[assignment]
+
     # usability 기준으로 표출/제외 분리.
-    # web_search 결과는 usability='usable' 기본값 (별도 필터 없음 — 텍스트 정보).
     shown: list[ExternalCandidate] = []
     excluded: list[ExternalCandidate] = []
     for c in external:

@@ -357,9 +357,15 @@ export default function AnalysisPage() {
                 </div>
                 <div className="top-rec-name">{c.name}</div>
                 <div className="top-rec-meta">
-                  {c.distance_m != null && c.walking_minutes != null && (
+                  {c.walking_minutes != null && (
                     <span>
-                      <strong>{c.distance_m}m · 직선거리 기준 도보 약 {c.walking_minutes}분</strong>
+                      <strong>
+                        {(c.walking_route_distance_m ?? c.distance_m) != null
+                          ? `${c.walking_route_distance_m ?? c.distance_m}m · `
+                          : ""}
+                        도보 약 {c.walking_minutes}분
+                        {c.walking_route_source === "osrm" ? " (실 경로)" : " (직선거리)"}
+                      </strong>
                     </span>
                   )}
                   {c.category && <span> · {c.category}</span>}

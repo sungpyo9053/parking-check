@@ -58,6 +58,8 @@ class Candidate(BaseModel):
     lng: float
     distance_m: int
     walk_minutes: int | None = None
+    walking_route_distance_m: int | None = None
+    walking_route_source: Literal["osrm", "haversine"] | None = None
     capacity: int | None = None
     fee_summary: str | None = None
     is_open_now: bool | None = None
@@ -127,7 +129,9 @@ class ExternalCandidate(BaseModel):
     url: str | None = None
     snippet: str | None = None
     distance_m: int | None = None
-    walking_minutes: int | None = None  # 직선거리 기반 추정치 (70 m/min, 올림)
+    walking_minutes: int | None = None
+    walking_route_distance_m: int | None = None
+    walking_route_source: Literal["osrm", "haversine"] | None = None
     lat: float | None = None
     lng: float | None = None
     address: str | None = None

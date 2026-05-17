@@ -47,6 +47,8 @@ export type Candidate = {
   lng: number;
   distance_m: number;
   walk_minutes: number | null;
+  walking_route_distance_m: number | null;
+  walking_route_source: "osrm" | "haversine" | null;
   capacity: number | null;
   fee_summary: string | null;
   is_open_now: boolean | null;
@@ -130,6 +132,8 @@ export type ExternalCandidate = {
   snippet: string | null;
   distance_m: number | null;
   walking_minutes: number | null;
+  walking_route_distance_m: number | null;
+  walking_route_source: "osrm" | "haversine" | null;
   lat: number | null;
   lng: number | null;
   address: string | null;

@@ -28,6 +28,7 @@ from ..services.external_recommender import pick_top_external
 from ..services.parking_fallback import collect_external_candidates
 from ..services.parking_search import latest_realtime_for_lots, nearby_parking_lots
 from ..services.self_parking_web import enrich_self_parking
+from ..services.walking_route import batch_compute as walking_batch_compute
 from ..services.recommendation import (
     classify_congestion,
     fee_summary,
@@ -193,6 +194,15 @@ def analyze(
                 history=history_block,
             )
         )
+
+    # DB candidates 에도 실 도보 경로 적용
+    if candidates:
+        pairs = [(c.lat, c.lng, dest_lat, dest_lng) for c in candidates]
+        routes = walking_batch_compute(pairs)
+        for c, r in zip(candidates, routes):
+            c.walking_route_distance_m = r["distance_m"]
+            c.walk_minutes = r["walking_minutes"]
+            c.walking_route_source = r["source"]  # type: ignore[assignment]
 
     candidates.sort(key=lambda c: c.score, reverse=True)
 
