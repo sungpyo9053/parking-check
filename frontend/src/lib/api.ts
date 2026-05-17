@@ -114,6 +114,7 @@ export type SelfParking = {
   confidence: number;
   label: string | null;
   reason: string | null;
+  summary_natural: string | null;
   matched_lot_id: number | null;
   evidence: SelfParkingEvidence[];
   warning: string | null;

@@ -95,6 +95,7 @@ class SelfParking(BaseModel):
     confidence: int = 0
     label: str | None = None
     reason: str | None = None
+    summary_natural: str | None = None  # LLM 자연어 요약 (Claude Haiku, 활성 시)
     matched_lot_id: int | None = None
     evidence: list[SelfParkingEvidence] = []
     warning: str | None = None

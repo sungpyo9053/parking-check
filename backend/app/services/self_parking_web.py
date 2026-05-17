@@ -18,7 +18,7 @@ import re
 from typing import Iterable
 
 from ..schemas.parking import SelfParking, SelfParkingEvidence
-from . import web_parking_search
+from . import llm_summary, web_parking_search
 
 logger = logging.getLogger(__name__)
 
@@ -374,11 +374,15 @@ def enrich_self_parking(
 
     warning = _DEFAULT_WARNING if final_status in ("likely", "uncertain", "available") else None
 
+    # LLM 자연어 요약 (ANTHROPIC_API_KEY 있을 때만, evidence 1건 이상)
+    summary_natural = llm_summary.summarize(dest_name, evidences) if evidences else None
+
     return SelfParking(
         status=final_status,  # type: ignore[arg-type]
         confidence=int(final_confidence),
         label=label_map.get(final_status),
         reason=final_reason,
+        summary_natural=summary_natural,
         matched_lot_id=matched_lot_id,
         evidence=evidences,
         warning=warning,

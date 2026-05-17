@@ -234,6 +234,21 @@ export default function AnalysisPage() {
                 {data.self_parking.confidence > 0 ? ` · ${data.self_parking.confidence}점` : ""}
               </span>
             </div>
+            {data.self_parking.summary_natural && (
+              <div
+                style={{
+                  fontSize: 13,
+                  background: "#eef2ff",
+                  border: "1px solid #c7d2fe",
+                  borderRadius: 6,
+                  padding: "6px 8px",
+                  marginTop: 4,
+                  lineHeight: 1.5,
+                }}
+              >
+                💬 {data.self_parking.summary_natural}
+              </div>
+            )}
             {data.self_parking.reason && (
               <div className="muted" style={{ fontSize: 12 }}>
                 {data.self_parking.reason}

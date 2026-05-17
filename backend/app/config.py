@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     NAVER_CLIENT_ID: str = ""
     NAVER_CLIENT_SECRET: str = ""
 
+    # Anthropic API (LLM 자연어 요약). 없으면 graceful skip.
+    # 발급: https://console.anthropic.com → API Keys
+    ANTHROPIC_API_KEY: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
