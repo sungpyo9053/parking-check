@@ -6,6 +6,7 @@ import ParkingCard from "../components/ParkingCard";
 import ExternalCard from "../components/ExternalCard";
 import { openKakaoFootRoute } from "../lib/maps";
 import { isFavorite, toggleFavorite } from "../lib/favorites";
+import { getGroup } from "../lib/favoritesGroup";
 import { sharePage } from "../lib/share";
 
 // 익명 클라이언트 토큰 (피드백 중복 측정용)
@@ -49,27 +50,75 @@ export default function AnalysisPage() {
   const [shareMsg, setShareMsg] = useState<string | null>(null);
 
   // 즐겨찾기 상태 동기화 (data 도착 후)
+  // 그룹 모드면 서버, 아니면 localStorage
   useEffect(() => {
     if (!data) return;
-    setFav(
-      isFavorite(
-        data.destination.place_id ?? null,
-        data.destination.lat,
-        data.destination.lng
-      )
-    );
+    const g = getGroup();
+    if (g) {
+      // 그룹 모드: 서버에서 현재 항목 조회해서 매칭
+      api
+        .getFavGroup(g.code)
+        .then(d => {
+          const matched = d.items.find(
+            it =>
+              (data.destination.place_id != null && it.place_id === data.destination.place_id) ||
+              (Math.abs(it.lat - data.destination.lat) < 0.0001 &&
+                Math.abs(it.lng - data.destination.lng) < 0.0001)
+          );
+          setFav(!!matched);
+        })
+        .catch(() => setFav(false));
+    } else {
+      setFav(
+        isFavorite(
+          data.destination.place_id ?? null,
+          data.destination.lat,
+          data.destination.lng
+        )
+      );
+    }
   }, [data]);
 
-  function toggleFav() {
+  async function toggleFav() {
     if (!data) return;
-    const next = toggleFavorite({
-      place_id: data.destination.place_id ?? null,
-      name: data.destination.name || placeName || "목적지",
-      address: data.destination.address ?? null,
-      lat: data.destination.lat,
-      lng: data.destination.lng,
-    });
-    setFav(next);
+    const g = getGroup();
+    if (g) {
+      // 그룹 모드: 서버 호출
+      try {
+        const d = await api.getFavGroup(g.code);
+        const existing = d.items.find(
+          it =>
+            (data.destination.place_id != null && it.place_id === data.destination.place_id) ||
+            (Math.abs(it.lat - data.destination.lat) < 0.0001 &&
+              Math.abs(it.lng - data.destination.lng) < 0.0001)
+        );
+        if (existing) {
+          await api.removeFavItem(g.code, existing.id);
+          setFav(false);
+        } else {
+          await api.addFavItem(g.code, {
+            place_id: data.destination.place_id,
+            name: data.destination.name || placeName || "목적지",
+            address: data.destination.address,
+            lat: data.destination.lat,
+            lng: data.destination.lng,
+            added_by: getUserToken(),
+          });
+          setFav(true);
+        }
+      } catch (e) {
+        alert("서버 즐겨찾기 실패: " + (e instanceof Error ? e.message : String(e)));
+      }
+    } else {
+      const next = toggleFavorite({
+        place_id: data.destination.place_id ?? null,
+        name: data.destination.name || placeName || "목적지",
+        address: data.destination.address ?? null,
+        lat: data.destination.lat,
+        lng: data.destination.lng,
+      });
+      setFav(next);
+    }
   }
 
   async function doShare() {

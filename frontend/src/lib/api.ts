@@ -260,6 +260,31 @@ export const api = {
       `/api/places/${place_id}/self-parking-feedback/summary`
     ),
 
+  createFavGroup: (name?: string) =>
+    request<FavoriteGroupOut>(`/api/favorites/groups`, {
+      method: "POST",
+      body: JSON.stringify({ name: name || null }),
+    }),
+
+  getFavGroup: (code: string) =>
+    request<FavoriteGroupDetail>(`/api/favorites/groups/${encodeURIComponent(code)}`),
+
+  addFavItem: (code: string, item: FavoriteItemCreate) =>
+    request<FavoriteItemOut>(
+      `/api/favorites/groups/${encodeURIComponent(code)}/items`,
+      { method: "POST", body: JSON.stringify(item) }
+    ),
+
+  removeFavItem: (code: string, itemId: number) =>
+    fetch(
+      `${import.meta.env.VITE_BACKEND_BASE_URL || ""}/api/favorites/groups/${encodeURIComponent(
+        code
+      )}/items/${itemId}`,
+      { method: "DELETE" }
+    ).then(r => {
+      if (!r.ok) throw new Error(`${r.status}`);
+    }),
+
   discoverHot: (params: {
     lat: number;
     lng: number;
@@ -300,4 +325,36 @@ export type DiscoverHotResponse = {
   label: string;
   region: string | null;
   items: HotPlaceItem[];
+};
+
+export type FavoriteGroupOut = {
+  id: number;
+  code: string;
+  name: string | null;
+  created_at: string;
+};
+
+export type FavoriteItemOut = {
+  id: number;
+  place_id: number | null;
+  name: string;
+  address: string | null;
+  lat: number;
+  lng: number;
+  added_by: string | null;
+  created_at: string;
+};
+
+export type FavoriteGroupDetail = {
+  group: FavoriteGroupOut;
+  items: FavoriteItemOut[];
+};
+
+export type FavoriteItemCreate = {
+  place_id?: number | null;
+  name: string;
+  address?: string | null;
+  lat: number;
+  lng: number;
+  added_by?: string | null;
 };

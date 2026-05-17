@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .routers import discover, health, parking, places, visits
+from .routers import discover, favorites, health, parking, places, visits
 
 settings = get_settings()
 
@@ -27,6 +27,7 @@ app.include_router(places.router)
 app.include_router(parking.router)
 app.include_router(visits.router)
 app.include_router(discover.router)
+app.include_router(favorites.router)
 
 
 @app.get("/")

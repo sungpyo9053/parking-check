@@ -154,3 +154,34 @@ CREATE INDEX IF NOT EXISTS ix_sp_feedback_place
     ON place_self_parking_feedback (place_id);
 CREATE INDEX IF NOT EXISTS ix_sp_feedback_created
     ON place_self_parking_feedback (created_at DESC);
+
+-- ---------------------------------------------------------------------------
+-- favorite_groups + favorite_items (둘이 즐겨찾기 공유, 가입 없이 group code 기반)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS favorite_groups (
+    id          BIGSERIAL PRIMARY KEY,
+    code        TEXT NOT NULL UNIQUE,
+    name        TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS favorite_items (
+    id            BIGSERIAL PRIMARY KEY,
+    group_id      BIGINT NOT NULL REFERENCES favorite_groups(id) ON DELETE CASCADE,
+    place_id      BIGINT REFERENCES places(id) ON DELETE SET NULL,
+    name          TEXT NOT NULL,
+    address       TEXT,
+    lat           DOUBLE PRECISION NOT NULL,
+    lng           DOUBLE PRECISION NOT NULL,
+    added_by      TEXT,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at    TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS ix_fav_items_group_active
+    ON favorite_items (group_id, deleted_at)
+    WHERE deleted_at IS NULL;
+-- 같은 그룹 내 (place_id 또는 좌표) 중복 활성 항목 방지를 위한 unique index
+CREATE UNIQUE INDEX IF NOT EXISTS uq_fav_items_group_place_active
+    ON favorite_items (group_id, place_id)
+    WHERE place_id IS NOT NULL AND deleted_at IS NULL;
