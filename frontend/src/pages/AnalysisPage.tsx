@@ -195,43 +195,56 @@ export default function AnalysisPage() {
             </>
           )}
 
-          {data.candidates.length > 0 && (
-            <>
-              <h2 className="h2">공공데이터 기반 주차장</h2>
-              <ul className="list">
-                {data.candidates.map(c => (
-                  <li key={c.id}>
-                    <ParkingCard c={c} onSelect={startVisit} onOpenMap={openKakaoMap} />
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-
-          {data.external_candidates && data.external_candidates.length > 0 && (
-            <>
-              <h2 className="h2">참고 후보 (확인 필요)</h2>
-              <ul className="list">
-                {data.external_candidates.map((e, i) => (
-                  <li key={`ext-${i}`}>
-                    <ExternalCard
-                      c={e}
-                      destinationLat={data.destination.lat}
-                      destinationLng={data.destination.lng}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-
-          {data.candidates.length === 0 &&
-            (!data.external_candidates || data.external_candidates.length === 0) && (
-              <p className="muted">
-                현재 연결된 데이터 소스에서는 반경 {radius}m 내 주차장 후보를 찾지 못했습니다.
-                카카오맵/현장 확인이 필요합니다.
-              </p>
-            )}
+          {(() => {
+            const dbCount = data.candidates.length;
+            const extCount = data.external_candidates?.length ?? 0;
+            const total = dbCount + extCount;
+            if (total === 0) {
+              return (
+                <p className="muted">
+                  현재 연결된 데이터 소스에서는 반경 {radius}m 내 주차장 후보를 찾지 못했습니다.
+                  카카오맵/현장 확인이 필요합니다.
+                </p>
+              );
+            }
+            return (
+              <>
+                <h2 className="h2">주차장 후보 {total}개</h2>
+                {dbCount > 0 && (
+                  <>
+                    <div className="section-sub">
+                      공공데이터 기반 {dbCount}개 · 요금/실시간 정보 있음
+                    </div>
+                    <ul className="list">
+                      {data.candidates.map(c => (
+                        <li key={c.id}>
+                          <ParkingCard c={c} onSelect={startVisit} onOpenMap={openKakaoMap} />
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {extCount > 0 && (
+                  <>
+                    <div className="section-sub">
+                      지도/웹 검색 기반 {extCount}개 · 운영/요금/실시간은 방문 전 확인 필요
+                    </div>
+                    <ul className="list">
+                      {data.external_candidates.map((e, i) => (
+                        <li key={`ext-${i}`}>
+                          <ExternalCard
+                            c={e}
+                            destinationLat={data.destination.lat}
+                            destinationLng={data.destination.lng}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </>
+            );
+          })()}
         </>
       )}
     </div>

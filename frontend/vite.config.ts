@@ -10,6 +10,13 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         registerType: "autoUpdate",
+        workbox: {
+          // 새 번들이 나오면 옛 SW 를 기다리지 않고 즉시 활성화해서
+          // 활성 탭이 새로고침만 해도 새 화면을 받게 한다.
+          skipWaiting: true,
+          clientsClaim: true,
+          cleanupOutdatedCaches: true,
+        },
         manifest: {
           name: "주차될까",
           short_name: "주차될까",
