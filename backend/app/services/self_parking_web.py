@@ -135,7 +135,10 @@ _BUILDING_PARKING_RE = _re.compile(
 _BUILDING_PARKING_WEIGHT = 30
 
 # (P3) 발렛/발레 파킹: 매장 발레 서비스
-_VALET_RE = _re.compile(r"발(?:렛|레)\s*파킹")
+# '발렛파킹' 만 잡으면 '발렛가능' / '발렛주차' / '발레서비스' / '발렛 운영' 누락.
+_VALET_RE = _re.compile(
+    r"발(?:렛|레)\s*(?:파킹|주차|서비스|가능|운영|이용|있음|제공)"
+)
 _VALET_WEIGHT = 30
 
 # (P4) POI 인접 자체 주차: "매장 앞 (대형/전용/넓은) 주차장", "가게 앞에 바로 주차 가능"
@@ -287,12 +290,15 @@ def _score_text(text: str) -> tuple[int, list[str]]:
     부정 처리:
       1) positive 키워드 직후 12자 안에 부정 패턴('없', '안 됨', '불가' 등)이
          오면 그 positive 매칭은 무효 ("전용 주차장은 따로 없었지만" 같은 케이스)
-      2) 같은 텍스트에 negative ≤ -25 가 있으면 남은 positive 도 완전 무효화
-         (인근 안내 문맥에 묻힌 거짓 positive 차단)
+      2) 같은 텍스트에 negative ≤ -25 가 있으면 **약** positive (substring 키워드)
+         만 무효화. **강** positive (regex 매칭: 발렛/건물/매장앞/시간무료) 는 유지.
+         — '발렛가능 / 매장 앞 또는 근처 공영' 같이 자체+인근 안내가 한 문장에
+            공존하는 경우, 자체 시그널을 살려야 함 (이병태함흥냉면 도곡점 등).
     """
     if not text:
         return 0, []
-    pos_score = 0
+    weak_pos = 0   # substring POSITIVE_KEYWORDS (약: 인근 안내에 묻히면 거짓 가능성)
+    strong_pos = 0 # positive regex (강: 매장 직결 자체 시그널, 인근 안내가 있어도 살림)
     neg_score = 0
     matched: list[str] = []
     t = text.lower()
@@ -302,12 +308,11 @@ def _score_text(text: str) -> tuple[int, list[str]]:
         idx = t.find(kw_lower)
         if idx < 0:
             continue
-        # 키워드 직후 12자 윈도우에 부정 단어가 있으면 무효
         tail = t[idx + len(kw_lower) : idx + len(kw_lower) + 12]
         if _NEGATION_AFTER.search(tail):
             matched.append(f"{kw}(부정문 무효)")
             continue
-        pos_score += weight
+        weak_pos += weight
         matched.append(kw)
 
     for kw, weight in NEGATIVE_KEYWORDS.items():
@@ -315,7 +320,7 @@ def _score_text(text: str) -> tuple[int, list[str]]:
             neg_score += weight
             matched.append(kw)
 
-    # regex 패턴 — negative (일반화)
+    # regex 패턴 — negative
     for pat, w, label in [
         (_SELF_NEGATION_RE, _SELF_NEGATION_WEIGHT, "자체부재"),
         (_NEARBY_PARKING_RE, _NEARBY_PARKING_WEIGHT, "인근안내"),
@@ -326,7 +331,7 @@ def _score_text(text: str) -> tuple[int, list[str]]:
         neg_score += s
         matched.extend(m)
 
-    # regex 패턴 — positive (자체 시그널 일반화) — 부정문 후속 무효화 적용
+    # regex 패턴 — strong positive (자체 시그널 일반화) — 부정문 무효화 적용
     for pat, w, label in [
         (_FREE_PARKING_RE, _FREE_PARKING_WEIGHT, "무료주차제공"),
         (_BUILDING_PARKING_RE, _BUILDING_PARKING_WEIGHT, "건물/매장 주차"),
@@ -334,13 +339,15 @@ def _score_text(text: str) -> tuple[int, list[str]]:
         (_VALET_RE, _VALET_WEIGHT, "발렛파킹"),
     ]:
         s, m = _apply_regex(pat, text, w, label, check_negation=True)
-        pos_score += s
+        strong_pos += s
         matched.extend(m)
 
-    if neg_score <= -25 and pos_score > 0:
-        pos_score = 0
+    # 약 positive 만 인근 안내 컨텍스트에서 무효화 (강 시그널은 보존)
+    if neg_score <= -25 and weak_pos > 0:
+        matched.append(f"(weak pos {weak_pos} → 인근안내 컨텍스트로 무효)")
+        weak_pos = 0
 
-    return pos_score + neg_score, matched
+    return weak_pos + strong_pos + neg_score, matched
 
 
 def _evidence_confidence(score: int) -> str:
