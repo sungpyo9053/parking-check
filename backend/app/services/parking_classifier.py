@@ -153,10 +153,16 @@ def _destination_match(name: str, destination_name: str | None) -> bool:
         "상가", "마트", "약국", "병원", "근처", "옆", "앞", "뒤", "역",
         "맞은편",
     }
+    # 'X점' 형식 지점 접미사 (도곡점/강남점/신림점/안국점 등) — 단독 매칭은 FP.
+    # 같은 지명의 다른 매장 주차장이 모두 selfMatch 되는 버그 (이병태/브라운핸즈/
+    # 플레어비/평양면옥이 전부 '도곡점' 으로 일치 잡힘) 차단.
+    _BRANCH_SUFFIX_RE = _re.compile(r"^[가-힣]{1,4}점$")
     for tok in tokens:
         if len(tok) < 3:
             continue
         if tok in GENERIC:
+            continue
+        if _BRANCH_SUFFIX_RE.match(tok):
             continue
         if _norm(tok) in n_norm:
             return True
