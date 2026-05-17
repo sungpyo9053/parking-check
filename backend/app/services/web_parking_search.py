@@ -16,11 +16,16 @@ from typing import Iterable
 import httpx
 
 from ..config import get_settings
+from ..utils.cache import TTLCache
+
+# 6시간 TTL — Tavily 한도 보호 위해 길게. 같은 (name, addr) 조합 결과 reuse.
+_RAW_CACHE: TTLCache[tuple, list[dict]] = TTLCache(max_size=1024, ttl_seconds=6 * 3600)
 
 TAVILY_URL = "https://api.tavily.com/search"
 _DEFAULT_TIMEOUT = 8.0
-_MAX_QUERIES = 3
-_MAX_RESULTS_PER_QUERY = 5
+# Tavily 무료 plan 1000건/월 한도 보호 — 분석 1회당 쿼리 최소화
+_MAX_QUERIES = 1
+_MAX_RESULTS_PER_QUERY = 6
 _MAX_TOTAL_RESULTS = 8
 
 logger = logging.getLogger(__name__)
@@ -108,12 +113,21 @@ def search_web_parking(
 
     반환 항목은 라우터에서 ExternalCandidate 로 매핑된다.
     Tavily 결과 원본 키: title, url, content, score.
+
+    캐시:
+      - (name, addr) 키로 6시간 TTL 저장. 한도 보호 + 동일 매장 재호출 0 cost.
     """
     if not is_enabled():
         return []
+    cache_key = ((destination_name or "").strip(), (destination_address or "").strip())
+    cached = _RAW_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
     api_key = get_settings().TAVILY_API_KEY
     queries = build_queries(destination_name, destination_address)
     if not queries:
+        _RAW_CACHE.set(cache_key, [])
         return []
 
     aggregated: list[dict] = []
@@ -139,5 +153,12 @@ def search_web_parking(
                 }
             )
             if len(aggregated) >= _MAX_TOTAL_RESULTS:
+                _RAW_CACHE.set(cache_key, aggregated)
                 return aggregated
+    # 결과가 비었어도 캐시 — 한도 초과 응답을 짧게 반복 호출하지 않게
+    _RAW_CACHE.set(cache_key, aggregated)
     return aggregated
+
+
+def cache_stats() -> dict:
+    return _RAW_CACHE.stats()
