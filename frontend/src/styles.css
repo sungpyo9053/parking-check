@@ -454,6 +454,22 @@ button {
   font-size: 11px;
 }
 
+/* discover 핫플 위젯 */
+.discover-block {
+  background: #fafafa;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 12px 0 16px;
+}
+.discover-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 /* usability tier 카드 색상 */
 .tag-usable { background: #bbf7d0; color: #14532d; }
 .tag-caution { background: #fed7aa; color: #9a3412; }

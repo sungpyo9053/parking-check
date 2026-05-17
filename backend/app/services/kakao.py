@@ -36,6 +36,26 @@ def search_keyword(query: str, size: int = 10) -> list[dict]:
     return r.json().get("documents", [])
 
 
+def reverse_geocode_region(lat: float, lng: float) -> dict | None:
+    """좌표 → 행정구역 (region_1depth_name/region_2depth_name/region_3depth_name).
+
+    '강남구', '역삼동' 같은 토큰을 얻어 Tavily 검색 쿼리에 활용한다.
+    """
+    params = {"x": str(lng), "y": str(lat), "input_coord": "WGS84"}
+    with httpx.Client(timeout=5.0) as client:
+        r = client.get(
+            f"{KAKAO_BASE}/geo/coord2regioncode.json",
+            headers=_headers(),
+            params=params,
+        )
+    if r.status_code != 200:
+        return None
+    docs = r.json().get("documents") or []
+    # 행정동 우선 (B = 법정동, H = 행정동)
+    h = next((d for d in docs if d.get("region_type") == "H"), None)
+    return h or (docs[0] if docs else None)
+
+
 def search_keyword_near(
     query: str,
     *,

@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRecentSearches } from "../hooks/useRecentSearches";
+import DiscoverHot from "../components/DiscoverHot";
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -29,6 +30,8 @@ export default function HomePage() {
         />
         <button type="submit">검색</button>
       </form>
+
+      <DiscoverHot />
 
       <h2 className="h2">최근 검색</h2>
       {items.length === 0 ? (

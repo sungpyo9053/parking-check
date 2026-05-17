@@ -252,5 +252,46 @@ export const api = {
   selfParkingFeedbackSummary: (place_id: number) =>
     request<SelfParkingFeedbackStats & { last_answer: string | null; last_at: string | null }>(
       `/api/places/${place_id}/self-parking-feedback/summary`
-    )
+    ),
+
+  discoverHot: (params: {
+    lat: number;
+    lng: number;
+    category: "cafe" | "food" | "sights";
+    limit?: number;
+    radius?: number;
+  }) => {
+    const q = new URLSearchParams({
+      lat: String(params.lat),
+      lng: String(params.lng),
+      category: params.category,
+      limit: String(params.limit ?? 3),
+      radius: String(params.radius ?? 1500),
+    });
+    return request<DiscoverHotResponse>(`/api/discover/hot?${q.toString()}`);
+  }
+};
+
+export type HotPlaceItem = {
+  name: string;
+  category: string | null;
+  category_group_code: string | null;
+  phone: string | null;
+  address: string | null;
+  road_address: string | null;
+  lat: number;
+  lng: number;
+  distance_m: number;
+  walking_minutes: number | null;
+  place_url: string | null;
+  hot_score: number;
+  instagram_mentions: number;
+  region_label: string | null;
+};
+
+export type DiscoverHotResponse = {
+  category: "cafe" | "food" | "sights";
+  label: string;
+  region: string | null;
+  items: HotPlaceItem[];
 };
