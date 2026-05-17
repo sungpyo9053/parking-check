@@ -152,12 +152,14 @@ export default function HomePage() {
   return (
     <div>
       <h1 className="h1">주차될까</h1>
-      <p className="tagline">목적지를 입력하면 주차 가능성을 먼저 확인합니다.</p>
+      <p className="tagline">
+        가기 전에 주차부터 확인하세요. 자체 주차 가능성, 주변 주차장, 도보 시간을 한 번에 보여드립니다.
+      </p>
 
       <form className="search-box" onSubmit={submit}>
         <input
           inputMode="search"
-          placeholder="예: 성수동 디올"
+          placeholder="예: 수유전통시장, 더홈 안양, 디올 성수"
           value={q}
           onChange={e => setQ(e.target.value)}
           autoFocus

@@ -8,16 +8,31 @@ type Props = {
   destinationName?: string;
 };
 
-function sourceBadgeClass(source: ExternalCandidate["source"]): string {
-  if (source === "kakao_fallback") return "tag tag-kakao";
-  if (source === "web_search") return "tag tag-web";
-  return "tag";
+function sourceLabel(source: ExternalCandidate["source"]): string {
+  if (source === "kakao_fallback") return "지도 검색 후보";
+  if (source === "web_search") return "웹 검색 후보";
+  return "참고 후보";
 }
 
-function usabilityBadgeClass(u: ExternalCandidate["usability"]): string {
-  if (u === "usable") return "tag tag-usable";
-  if (u === "caution") return "tag tag-caution";
-  return "tag tag-excluded";
+function usabilityTagClass(u: ExternalCandidate["usability"]): string {
+  if (u === "usable") return "tag tag-verdict-good";
+  if (u === "caution") return "tag tag-verdict-caution";
+  return "tag tag-verdict-bad";
+}
+
+function usabilityUserLabel(u: ExternalCandidate["usability"]): string {
+  if (u === "usable") return "추천 가능";
+  if (u === "caution") return "확인 필요";
+  return "추천 제외";
+}
+
+function userKindLabel(category: string | null | undefined, source: ExternalCandidate["source"]): string {
+  const cat = category || "";
+  if (cat.includes("공영")) return "공영주차장";
+  if (cat.includes("노상")) return "공영(노상)주차장";
+  if (cat.includes("주차장")) return "민영/유료주차장";
+  if (source === "web_search") return "웹 검색 기반";
+  return "주차장";
 }
 
 export default function ExternalCard({ c, destinationLat, destinationLng, destinationName }: Props) {
@@ -43,77 +58,81 @@ export default function ExternalCard({ c, destinationLat, destinationLng, destin
   }
 
   const isExcluded = c.usability === "private_restricted";
+  const kindLabel = userKindLabel(c.category, c.source);
+  const distM = c.walking_route_distance_m ?? c.distance_m;
+  const distLabel = c.walking_route_source === "osrm" ? "실 도보 경로" : "직선거리 기준";
+
+  // 추천 제외 카드는 '왜 제외'를 사용자 친화 문구로 한 줄 보여줌
+  const excludedReasonLine = isExcluded
+    ? "타 매장/기관 전용 주차장으로 보여 추천하지 않습니다."
+    : null;
 
   return (
-    <div className={`pcard pcard-external pcard-${c.usability}`}>
+    <div className={`pcard pcard-${c.usability}`}>
       <div className="head">
-        <span className="name" style={isExcluded ? { textDecoration: "line-through", color: "#9ca3af" } : undefined}>
-          {c.name}
+        <span className={usabilityTagClass(c.usability)}>{usabilityUserLabel(c.usability)}</span>
+        <span className="tag" style={{ background: "#f3f4f6", color: "#6b7280" }}>
+          {sourceLabel(c.source)}
         </span>
-        <span className={usabilityBadgeClass(c.usability)}>{c.usability_label}</span>
+      </div>
+      <div
+        className="name"
+        style={{
+          fontWeight: 700,
+          marginTop: 4,
+          ...(isExcluded ? { textDecoration: "line-through", color: "#9ca3af" } : null),
+        }}
+      >
+        {c.name}
       </div>
 
-      <div className="meta">
-        <span className={sourceBadgeClass(c.source)}>{c.source_label}</span>
-      </div>
-
-      {c.snippet && <div className="meta external-snippet">{c.snippet}</div>}
-
-      <div className="meta">
-        {c.distance_m != null && <span>{c.distance_m}m</span>}
-        {c.distance_m != null && (c.address || c.road_address) && <span> · </span>}
-        {(c.address || c.road_address) && (
-          <span>{c.road_address || c.address}</span>
-        )}
-        {c.category && <span> · {c.category}</span>}
-      </div>
-
-      <div className="meta muted">
-        요금 {c.fee_summary} · {c.realtime_status}
-      </div>
-
-      {hasCoords && c.walking_minutes != null && (
-        <div className="walk-block">
-          <div>이 주차장은 목적지 자체 주차장이 아닙니다.</div>
-          <div>
-            주차 후 목적지까지 <strong>도보 약 {c.walking_minutes}분</strong>
-            {c.walking_route_distance_m != null
-              ? ` (${c.walking_route_distance_m}m, ${c.walking_route_source === "osrm" ? "실 도보 경로" : "직선거리 추정"})`
-              : c.distance_m != null
-              ? ` (${c.distance_m}m, 직선거리)`
-              : ""}{" "}
-            이동이 필요합니다.
-          </div>
-          <div className="muted" style={{ fontSize: 11 }}>
-            실 경로는 OpenStreetMap 기반 추정치이며 카카오맵에서 한 번 더 확인할 수 있습니다.
-          </div>
+      {hasCoords && c.walking_minutes != null && !isExcluded && (
+        <div className="meta meta-walk">
+          <strong>목적지까지 도보 약 {c.walking_minutes}분</strong>
+          {distM != null && (
+            <span style={{ marginLeft: 6 }}>
+              · {distM}m ({distLabel})
+            </span>
+          )}
+        </div>
+      )}
+      {!isExcluded && (
+        <div className="meta">
+          <span>{kindLabel}</span>
+          {(c.address || c.road_address) && <span>· {c.road_address || c.address}</span>}
+        </div>
+      )}
+      {!isExcluded && (
+        <div className="meta muted">
+          {c.fee_summary === "확인 필요" ? "요금 확인 필요" : `요금 ${c.fee_summary}`} ·{" "}
+          {c.realtime_status === "실시간 정보 없음" ? "실시간 정보 없음" : c.realtime_status}
+        </div>
+      )}
+      {excludedReasonLine && (
+        <div className="meta" style={{ color: "#9ca3af", fontSize: 12, marginTop: 4 }}>
+          {excludedReasonLine}
         </div>
       )}
 
-      <div className="reasons" style={{ color: "#b85c00" }}>
-        ⚠ {c.warning}
-      </div>
-      {c.usability_reasons.length > 0 && (
-        <div className="reasons muted" style={{ fontSize: 11 }}>
-          분류 근거: {c.usability_reasons.join(" · ")}
+      {!isExcluded && (
+        <div className="actions">
+          {hasCoords && (
+            <button className="btn primary" onClick={openFootRoute}>
+              도보 길찾기
+            </button>
+          )}
+          {c.url && (
+            <button className="btn" onClick={openSource}>
+              {isWeb ? "원문 보기" : "카카오맵에서 열기"}
+            </button>
+          )}
+          {!c.url && !hasCoords && (
+            <button className="btn" onClick={openKakaoMapSearch}>
+              주변 주차장 검색
+            </button>
+          )}
         </div>
       )}
-
-      <div className="actions">
-        {hasCoords && (
-          <button className="btn primary" onClick={openFootRoute}>
-            카카오맵 도보 길찾기
-          </button>
-        )}
-        {c.url && (
-          <button className="btn" onClick={openSource}>
-            {isWeb ? "원문 보기" : "카카오맵에서 열기"}
-          </button>
-        )}
-        <button className="btn" onClick={openKakaoMapSearch}>
-          주변 주차장 검색
-        </button>
-      </div>
     </div>
   );
 }

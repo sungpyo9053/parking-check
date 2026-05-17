@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { api, AnalyzeResponse, Candidate, SelfParkingFeedbackStats } from "../lib/api";
+import {
+  api,
+  AnalyzeResponse,
+  Candidate,
+  ExternalCandidate,
+  SelfParkingFeedbackStats,
+} from "../lib/api";
 import KakaoMap, { MapMarker } from "../components/KakaoMap";
 import ParkingCard from "../components/ParkingCard";
 import ExternalCard from "../components/ExternalCard";
@@ -24,13 +30,154 @@ function getUserToken(): string {
   }
 }
 
-const SELF_LABEL: Record<string, string> = {
-  available: "자체 주차 가능 (DB 매칭)",
-  likely: "자체 주차 가능성 높음 (웹 근거)",
-  uncertain: "자체 주차 가능성 불확실",
-  unavailable: "자체 주차 어려움",
-  unknown: "자체 주차 정보 부족"
-};
+// ─── 최종 판단(verdict) 계산 ─────────────────────────────
+// 입력 데이터에서 사용자가 보고 싶은 결론 한 줄을 만든다.
+type Verdict = "good" | "caution" | "bad" | "unknown";
+
+function buildVerdict(data: AnalyzeResponse): {
+  kind: Verdict;
+  title: string;
+  detail: string;
+  hint: string | null;
+} {
+  const sp = data.self_parking;
+  const tr = data.top_recommendation;
+  const trc = tr?.candidate;
+  const usableCount =
+    data.candidates.length +
+    (data.external_candidates || []).filter(e => e.usability === "usable").length;
+  const cautionCount = (data.external_candidates || []).filter(e => e.usability === "caution")
+    .length;
+  const excludedCount = data.fallback?.excluded_items?.length ?? 0;
+  const trWalkMin = trc?.walking_minutes ?? null;
+
+  // 1) 자체 가능 — 가장 강한 긍정
+  if (sp.status === "available" || sp.status === "likely") {
+    return {
+      kind: "good",
+      title: "차 가져가도 괜찮습니다",
+      detail: "목적지에 자체 주차가 가능한 것으로 보입니다. 현장에서 한 번 더 확인하세요.",
+      hint:
+        excludedCount > 0
+          ? `근처 타 매장 전용 주차장 ${excludedCount}곳은 추천에서 제외했습니다.`
+          : null,
+    };
+  }
+  // 2) 자체 안됨 + 가까운 추천 있음 — 차 가져가도 OK
+  if (sp.status === "unavailable" && trc && trWalkMin != null && trWalkMin <= 7) {
+    return {
+      kind: "good",
+      title: "차 가져가도 괜찮습니다",
+      detail: `자체 주차장은 없지만 도보 약 ${trWalkMin}분 거리의 추천 주차장이 있습니다.`,
+      hint:
+        excludedCount > 0
+          ? `타 매장 전용 주차장 ${excludedCount}곳은 추천에서 제외했습니다.`
+          : null,
+    };
+  }
+  // 3) 자체 안됨 + 추천도 멀거나 없음 — 주의
+  if (sp.status === "unavailable") {
+    if (trc) {
+      return {
+        kind: "caution",
+        title: "주차 후 좀 걸어야 합니다",
+        detail: `자체 주차장은 없습니다. 가까운 추천 주차장까지 도보 약 ${
+          trWalkMin ?? "?"
+        }분.`,
+        hint: cautionCount > 0 ? `추가 확인 필요 후보 ${cautionCount}곳도 함께 표시했습니다.` : null,
+      };
+    }
+    return {
+      kind: "bad",
+      title: "차로 가는 건 추천하지 않습니다",
+      detail: "자체 주차장이 없고, 가까운 공용 주차장도 찾지 못했습니다.",
+      hint: "대중교통/택시를 고려해 보세요.",
+    };
+  }
+  // 4) 자체 불확실 + 추천 가까이 — 가능
+  if (sp.status === "uncertain" && trc && trWalkMin != null && trWalkMin <= 7) {
+    return {
+      kind: "good",
+      title: "차 가져가도 괜찮습니다",
+      detail: `자체 주차는 확인이 필요하지만, 도보 약 ${trWalkMin}분 거리의 추천 주차장이 있습니다.`,
+      hint: null,
+    };
+  }
+  // 5) 자체 불확실 + 추천 있음 — 애매
+  if (sp.status === "uncertain") {
+    if (trc) {
+      return {
+        kind: "caution",
+        title: "확인이 필요합니다",
+        detail: `목적지 자체 주차는 매장 확인이 필요합니다. 추천 주차장까지 도보 약 ${
+          trWalkMin ?? "?"
+        }분.`,
+        hint: null,
+      };
+    }
+    return {
+      kind: "caution",
+      title: "확인이 필요합니다",
+      detail: "자체 주차 여부를 확인하기 어렵습니다. 매장에 문의하거나 현장에서 확인하세요.",
+      hint: null,
+    };
+  }
+  // 6) 정보 부족
+  if (usableCount === 0 && cautionCount === 0 && !trc) {
+    return {
+      kind: "unknown",
+      title: "정보가 부족합니다",
+      detail: "이 위치 주변의 주차장 정보를 충분히 찾지 못했습니다. 현장 확인이 필요합니다.",
+      hint: null,
+    };
+  }
+  // 7) fallthrough — 정보 부족이지만 추천은 있는 케이스
+  return {
+    kind: "unknown",
+    title: "정보가 부족합니다",
+    detail: trc
+      ? `자체 주차 정보를 확인할 수 없습니다. 참고 후보로 도보 약 ${trWalkMin ?? "?"}분 거리의 주차장이 있습니다.`
+      : "자체 주차 정보를 확인할 수 없습니다.",
+    hint: null,
+  };
+}
+
+// 자체 주차 카드 사용자 친화 문구
+function selfParkingCopy(data: AnalyzeResponse): { tag: string; tagKind: Verdict; line: string } {
+  const sp = data.self_parking;
+  switch (sp.status) {
+    case "available":
+      return {
+        tag: "가능성 높음",
+        tagKind: "good",
+        line: "지도에 매장 자체 주차장이 등록되어 있습니다.",
+      };
+    case "likely":
+      return {
+        tag: "가능성 높음",
+        tagKind: "good",
+        line: "후기/지도 정보 기준으로 매장 자체 주차가 가능한 것으로 보입니다.",
+      };
+    case "uncertain":
+      return {
+        tag: "확인 필요",
+        tagKind: "caution",
+        line: "매장 자체 주차 여부를 확실히 판단하기 어렵습니다. 방문 전 매장에 확인하는 것이 좋습니다.",
+      };
+    case "unavailable":
+      return {
+        tag: "가능성 낮음",
+        tagKind: "bad",
+        line: "후기 기준으로 매장 자체 주차는 어려운 것으로 보입니다. 아래 추천 주차장을 이용하세요.",
+      };
+    default:
+      return {
+        tag: "정보 부족",
+        tagKind: "unknown",
+        line: "지도/후기에서 자체 주차 정보를 찾지 못했습니다. 현장 확인이 필요합니다.",
+      };
+  }
+}
 
 export default function AnalysisPage() {
   const [sp] = useSearchParams();
@@ -50,12 +197,10 @@ export default function AnalysisPage() {
   const [shareMsg, setShareMsg] = useState<string | null>(null);
 
   // 즐겨찾기 상태 동기화 (data 도착 후)
-  // 그룹 모드면 서버, 아니면 localStorage
   useEffect(() => {
     if (!data) return;
     const g = getGroup();
     if (g) {
-      // 그룹 모드: 서버에서 현재 항목 조회해서 매칭
       api
         .getFavGroup(g.code)
         .then(d => {
@@ -83,7 +228,6 @@ export default function AnalysisPage() {
     if (!data) return;
     const g = getGroup();
     if (g) {
-      // 그룹 모드: 서버 호출
       try {
         const d = await api.getFavGroup(g.code);
         const existing = d.items.find(
@@ -124,9 +268,9 @@ export default function AnalysisPage() {
   async function doShare() {
     if (!data) return;
     const name = data.destination.name || placeName || "목적지";
-    const status = data.self_parking.label || data.self_parking.status;
+    const v = buildVerdict(data);
     const top = data.top_recommendation?.candidate;
-    const bits: string[] = [`자체 주차: ${status}`];
+    const bits: string[] = [v.title];
     if (top) {
       bits.push(
         `추천: ${top.name}${
@@ -196,6 +340,7 @@ export default function AnalysisPage() {
 
   const markers = useMemo<MapMarker[]>(() => {
     if (!data) return [];
+    // 지도에는 추천 가능 + 확인 필요 만. 추천 제외는 숨김.
     const externalForMap = (data.external_candidates || []).filter(
       e => e.lat != null && e.lng != null && e.usability !== "private_restricted"
     );
@@ -215,7 +360,6 @@ export default function AnalysisPage() {
       },
     ];
 
-    // 추천 마커는 가장 위에 별도로 노란 ⭐ 강조
     if (tr && recLat != null && recLng != null) {
       out.push({
         id: "top-rec",
@@ -226,7 +370,7 @@ export default function AnalysisPage() {
         detail: {
           name: tr.candidate.name,
           usability: "usable",
-          usabilityLabel: "⭐ 최우선 추천",
+          usabilityLabel: "1순위 추천",
           distanceM: tr.candidate.walking_route_distance_m ?? tr.candidate.distance_m,
           walkingMinutes: tr.candidate.walking_minutes,
         },
@@ -261,7 +405,8 @@ export default function AnalysisPage() {
           detail: {
             name: e.name,
             usability: e.usability,
-            usabilityLabel: e.usability_label,
+            usabilityLabel:
+              e.usability === "usable" ? "추천 가능" : e.usability === "caution" ? "확인 필요" : "추천 제외",
             distanceM: e.walking_route_distance_m ?? e.distance_m,
             walkingMinutes: e.walking_minutes,
           },
@@ -279,11 +424,15 @@ export default function AnalysisPage() {
       destination_lng: data.destination.lng,
       selected_parking_lot_id: c.id,
       selected_parking_name: c.name,
-      predicted_status: c.congestion === "full" || c.congestion === "risky"
-        ? "risky" : c.congestion === "unknown" ? "unknown" : "available",
+      predicted_status:
+        c.congestion === "full" || c.congestion === "risky"
+          ? "risky"
+          : c.congestion === "unknown"
+            ? "unknown"
+            : "available",
       predicted_risk_score: c.score,
       api_available_count: c.realtime?.available_count ?? null,
-      api_total_capacity: c.realtime?.total_capacity ?? null
+      api_total_capacity: c.realtime?.total_capacity ?? null,
     };
     api
       .createVisit(payload)
@@ -292,15 +441,30 @@ export default function AnalysisPage() {
   }
 
   function openKakaoMap(c: Candidate) {
-    // 카카오맵 외부 길찾기 URL — 좌표가 비어있으면 이름으로 열기
     const dest = data?.destination;
     if (!dest) return;
     const url = `https://map.kakao.com/?map_type=TYPE_MAP&target=other&rt=,,${dest.lng},${dest.lat}&rt2=${encodeURIComponent(c.name)}`;
     window.open(url, "_blank");
   }
 
+  // ─── 렌더 ─────────────────────────────────────────────
+  const verdict = data ? buildVerdict(data) : null;
+  const selfCopy = data ? selfParkingCopy(data) : null;
+  const dest = data?.destination;
+  const destName = data?.destination.name || placeName || "목적지";
+
+  // 추천 가능 / 확인 필요 / 추천 제외 분리
+  const usableExt: ExternalCandidate[] = data
+    ? (data.external_candidates || []).filter(e => e.usability === "usable")
+    : [];
+  const cautionExt: ExternalCandidate[] = data
+    ? (data.external_candidates || []).filter(e => e.usability === "caution")
+    : [];
+  const excluded: ExternalCandidate[] = data?.fallback?.excluded_items || [];
+
   return (
     <div>
+      {/* 헤더: 목적지 이름 + 즐겨찾기/공유 */}
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
         <h1 className="h1" style={{ margin: 0 }}>
           {placeName || data?.destination.name || "분석"}
@@ -349,6 +513,7 @@ export default function AnalysisPage() {
       </div>
       <p className="tagline">{data?.destination.address}</p>
 
+      {/* 반경 선택 칩 */}
       <div className="search-box" style={{ marginTop: 0 }}>
         {[300, 500, 1000].map(r => (
           <button
@@ -365,67 +530,136 @@ export default function AnalysisPage() {
       {error && <p className="error">{error}</p>}
       {!data && !error && <p className="muted">분석 중...</p>}
 
-      {data && (
+      {data && verdict && selfCopy && dest && (
         <>
-          {data.analysis_summary && (
-            <div
-              style={{
-                background: "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)",
-                border: "1px solid #c4b5fd",
-                borderRadius: 10,
-                padding: "10px 14px",
-                margin: "8px 0 12px",
-                fontSize: 14,
-                lineHeight: 1.55,
-                color: "#4c1d95",
-              }}
-            >
-              <span style={{ fontWeight: 700, marginRight: 6 }}>💡 한줄 요약</span>
-              {data.analysis_summary}
-            </div>
-          )}
+          {/* [1] 최종 판단 카드 — 화면 최상단 */}
+          <section className={`verdict-card verdict-${verdict.kind}`} aria-live="polite">
+            <div className="verdict-q">차 가져가도 될까?</div>
+            <div className="verdict-title">{verdict.title}</div>
+            <div className="verdict-detail">{verdict.detail}</div>
+            {verdict.hint && <div className="verdict-hint">{verdict.hint}</div>}
+          </section>
 
+          {/* [2] 1순위 추천 카드 (자체 가능이면 자체 카드, 아니면 외부 추천) */}
+          {(() => {
+            const isSelf =
+              data.self_parking.status === "available" || data.self_parking.status === "likely";
+            const tr = data.top_recommendation;
+            if (isSelf) {
+              return (
+                <section className="top-rec-card top-rec-self">
+                  <div className="top-rec-head">
+                    <span className="top-rec-badge">⭐ 1순위 — 목적지 자체 주차</span>
+                  </div>
+                  <div className="top-rec-name">{destName}</div>
+                  <div className="top-rec-meta">
+                    <strong>주차 후 매장까지 도보 0분</strong>
+                  </div>
+                  <div className="top-rec-help">
+                    매장 자체 주차장 이용을 권장합니다. 실시간 가용은 현장 확인이 필요합니다.
+                  </div>
+                </section>
+              );
+            }
+            if (!tr) {
+              return (
+                <section className="top-rec-card top-rec-empty">
+                  <div className="top-rec-head">
+                    <span className="top-rec-badge top-rec-badge-empty">
+                      추천 가능한 주차장을 찾지 못했습니다
+                    </span>
+                  </div>
+                  <div className="top-rec-help">
+                    이 위치 주변에서 추천 가능한 주차장이 확인되지 않았습니다. 대중교통/택시
+                    이용을 고려해 보세요.
+                  </div>
+                </section>
+              );
+            }
+            const c = tr.candidate;
+            const canRoute = c.lat != null && c.lng != null;
+            const distM = c.walking_route_distance_m ?? c.distance_m;
+            const distSourceLabel =
+              c.walking_route_source === "osrm" ? "실 도보 경로" : "직선거리 기준";
+            // 카테고리 → 사용자 표현
+            const kindLabel = (() => {
+              const cat = c.category || "";
+              if (cat.includes("공영")) return "공영주차장";
+              if (cat.includes("노상")) return "공영(노상)주차장";
+              if (cat.includes("주차")) return "민영/유료주차장";
+              return "주차장";
+            })();
+            return (
+              <section className="top-rec-card">
+                <div className="top-rec-head">
+                  <span className="top-rec-badge">⭐ 1순위 추천 주차장</span>
+                </div>
+                <div className="top-rec-name">{c.name}</div>
+                <div className="top-rec-meta">
+                  {c.walking_minutes != null && (
+                    <strong>목적지까지 도보 약 {c.walking_minutes}분</strong>
+                  )}
+                  {distM != null && (
+                    <span style={{ marginLeft: 6 }}>
+                      · {distM}m ({distSourceLabel})
+                    </span>
+                  )}
+                </div>
+                <div className="top-rec-help">
+                  {kindLabel} · 운영/요금 확인 필요
+                </div>
+                <div className="top-rec-help">
+                  목적지 자체 주차장이 아닙니다. 주차 후 목적지까지 걸어가야 합니다.
+                </div>
+                <div className="actions" style={{ marginTop: 10 }}>
+                  {canRoute && (
+                    <button
+                      className="btn primary"
+                      onClick={() =>
+                        openKakaoFootRoute(
+                          { lat: c.lat!, lng: c.lng!, name: c.name },
+                          { lat: dest.lat, lng: dest.lng, name: destName }
+                        )
+                      }
+                    >
+                      도보 길찾기
+                    </button>
+                  )}
+                  {c.url && (
+                    <button
+                      className="btn"
+                      onClick={() => window.open(c.url!, "_blank", "noopener,noreferrer")}
+                    >
+                      카카오맵에서 열기
+                    </button>
+                  )}
+                </div>
+              </section>
+            );
+          })()}
+
+          {/* 지도 */}
           <KakaoMap
-            center={{ lat: data.destination.lat, lng: data.destination.lng }}
+            center={{ lat: dest.lat, lng: dest.lng }}
             markers={markers}
-            destinationLat={data.destination.lat}
-            destinationLng={data.destination.lng}
-            destinationName={data.destination.name || placeName || "목적지"}
+            destinationLat={dest.lat}
+            destinationLng={dest.lng}
+            destinationName={destName}
           />
 
-          <div className="summary-card">
-            <div className="row">
-              <span className="label">자체 주차 가능성</span>
-              <span className={`self-status self-status-${data.self_parking.status}`}>
-                {data.self_parking.label || SELF_LABEL[data.self_parking.status]}
-                {data.self_parking.confidence > 0 ? ` · ${data.self_parking.confidence}점` : ""}
-              </span>
+          {/* [3] 목적지 자체 주차 카드 */}
+          <section className={`self-card self-card-${selfCopy.tagKind}`}>
+            <div className="self-card-head">
+              <span className="self-card-title">목적지 자체 주차</span>
+              <span className={`tag tag-verdict-${selfCopy.tagKind}`}>{selfCopy.tag}</span>
             </div>
+            <div className="self-card-line">{selfCopy.line}</div>
+
             {data.self_parking.summary_natural && (
-              <div
-                style={{
-                  fontSize: 13,
-                  background: "#eef2ff",
-                  border: "1px solid #c7d2fe",
-                  borderRadius: 6,
-                  padding: "6px 8px",
-                  marginTop: 4,
-                  lineHeight: 1.5,
-                }}
-              >
-                💬 {data.self_parking.summary_natural}
-              </div>
+              <div className="self-card-quote">💬 {data.self_parking.summary_natural}</div>
             )}
-            {data.self_parking.reason && (
-              <div className="muted" style={{ fontSize: 12 }}>
-                {data.self_parking.reason}
-              </div>
-            )}
-            {data.self_parking.warning && (
-              <div style={{ fontSize: 12, color: "#b85c00" }}>
-                ⚠ {data.self_parking.warning}
-              </div>
-            )}
+
+            {/* 사용자 피드백 */}
             {data.destination.place_id && (
               <div className="sp-feedback">
                 <div className="sp-feedback-q">실제로 자체 주차 가능했나요?</div>
@@ -454,32 +688,28 @@ export default function AnalysisPage() {
                 </div>
                 {(feedbackStats?.total ?? 0) > 0 && (
                   <div className="sp-feedback-stats">
-                    누적 응답 {feedbackStats?.total}: ✓ {feedbackStats?.yes_count} · ✗ {feedbackStats?.no_count} · ? {feedbackStats?.unknown_count}
-                    {feedbackJustSent && <span style={{ color: "#16a34a" }}> · 응답 저장됨</span>}
+                    누적 응답 {feedbackStats?.total}: ✓ {feedbackStats?.yes_count} · ✗{" "}
+                    {feedbackStats?.no_count} · ? {feedbackStats?.unknown_count}
+                    {feedbackJustSent && (
+                      <span style={{ color: "#16a34a" }}> · 응답 저장됨</span>
+                    )}
                   </div>
                 )}
               </div>
             )}
+
+            {/* 근거는 접기 영역으로 */}
             {data.self_parking.evidence && data.self_parking.evidence.length > 0 && (
               <details className="self-evidence">
-                <summary>
-                  자체 주차 근거 {data.self_parking.evidence.length}건 보기
-                </summary>
+                <summary>판단 근거 {data.self_parking.evidence.length}건 보기</summary>
                 <ul className="evidence-list">
                   {data.self_parking.evidence.map((e, i) => (
                     <li key={`ev-${i}`} className="evidence-item">
                       <div className="evidence-head">
-                        <span className={`tag tag-${e.confidence}`}>
-                          {e.source === "web_search" ? "웹" : e.source} · {e.confidence}
-                        </span>
+                        <span className={`tag tag-${e.confidence}`}>웹 후기 · {e.confidence}</span>
                         {e.title && <span className="evidence-title">{e.title}</span>}
                       </div>
                       {e.snippet && <div className="evidence-snippet">{e.snippet}</div>}
-                      {e.matched_keywords.length > 0 && (
-                        <div className="evidence-keywords">
-                          매칭: {e.matched_keywords.map(k => `「${k}」`).join(" ")}
-                        </div>
-                      )}
                       {e.url && (
                         <a
                           className="evidence-link"
@@ -495,242 +725,55 @@ export default function AnalysisPage() {
                 </ul>
               </details>
             )}
-            <div className="row">
-              <span className="label">DB 등록 후보</span>
-              <span>
-                {data.summary.nearby_count}개
-                {data.summary.nearest_distance_m != null
-                  ? ` / 최근접 ${data.summary.nearest_distance_m}m`
-                  : ""}
-              </span>
-            </div>
-            {data.external_candidates && data.external_candidates.length > 0 && (
-              <div className="row">
-                <span className="label">외부 검색 후보</span>
-                <span>{data.external_candidates.length}개</span>
-              </div>
-            )}
-            <div className="row">
-              <span className="label">만차 위험</span>
-              <span>{data.summary.any_full_risk ? "있음" : "낮음"}</span>
-            </div>
-            <div className="row">
-              <span className="label">데이터 신뢰도</span>
-              <span>{data.summary.data_quality}</span>
-            </div>
-          </div>
+          </section>
 
+          {/* 메뉴 카드 (식당/카페) */}
           {data.menu && data.menu.items.length > 0 && (
-            <div
-              className="summary-card"
-              style={{
-                background: "#fff7ed",
-                border: "1px solid #fed7aa",
-                marginTop: 8,
-              }}
-            >
-              <div className="row">
-                <span className="label">🍽 인기 메뉴</span>
+            <section className="menu-card">
+              <div className="menu-card-head">
+                <span className="menu-card-title">🍽 인기 메뉴</span>
                 <span className="muted" style={{ fontSize: 11 }}>
-                  네이버 후기 빈도
+                  방문 후기 빈도
                 </span>
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 6,
-                  marginTop: 6,
-                }}
-              >
-                {data.menu.items.map((m) => (
-                  <span
-                    key={m.name}
-                    title={m.evidence || ""}
-                    style={{
-                      background: "#fff",
-                      border: "1px solid #fdba74",
-                      borderRadius: 12,
-                      padding: "3px 9px",
-                      fontSize: 13,
-                      color: "#9a3412",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
+              <div className="menu-chips">
+                {data.menu.items.map(m => (
+                  <span key={m.name} className="menu-chip" title={m.evidence || ""}>
                     {m.name}
-                    <span style={{ color: "#c2410c", marginLeft: 4, fontSize: 11 }}>
-                      {m.mentions}회
-                    </span>
+                    <span className="menu-chip-count">{m.mentions}회</span>
                   </span>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
-          {(() => {
-            // 통일된 '⭐ 추천 주차장' 카드:
-            //   - 자체 주차 likely/available → "자체 주차 추천 — [목적지명]"
-            //   - 그 외 + top_recommendation 있음 → "[외부 주차장명] 주차장 추천"
-            const sp = data.self_parking;
-            const isSelf = sp.status === "available" || sp.status === "likely";
-            const tr = data.top_recommendation;
-            const dest = data.destination;
-            const destDisplayName = dest.name || placeName || "목적지";
-
-            if (isSelf) {
-              return (
-                <div className="top-rec-card top-rec-self">
-                  <div className="top-rec-head">
-                    <span className="top-rec-badge">⭐ 자체 주차 추천</span>
-                    {sp.confidence > 0 && (
-                      <span className="muted" style={{ fontSize: 11 }}>
-                        confidence {sp.confidence}
-                      </span>
-                    )}
-                  </div>
-                  <div className="top-rec-name">{destDisplayName} (목적지 자체 주차)</div>
-                  <div className="top-rec-meta">
-                    <strong>주차 후 매장까지 도보 0분</strong>
-                    {sp.label ? ` · ${sp.label}` : ""}
-                  </div>
-                  {sp.reason && (
-                    <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-                      {sp.reason}
-                    </div>
-                  )}
-                  {sp.warning && (
-                    <div style={{ fontSize: 12, color: "#b85c00", marginTop: 4 }}>
-                      ⚠ {sp.warning}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-            if (!tr) return null;
-            const c = tr.candidate;
-            const canRoute = c.lat != null && c.lng != null;
-            return (
-              <div className="top-rec-card">
-                <div className="top-rec-head">
-                  <span className="top-rec-badge">⭐ {c.name} 추천</span>
-                  <span className="muted" style={{ fontSize: 11 }}>score {tr.score}</span>
-                </div>
-                <div className="top-rec-name">{c.name}</div>
-                <div className="top-rec-meta">
-                  {c.walking_minutes != null && (
-                    <span>
-                      <strong>
-                        {(c.walking_route_distance_m ?? c.distance_m) != null
-                          ? `${c.walking_route_distance_m ?? c.distance_m}m · `
-                          : ""}
-                        도보 약 {c.walking_minutes}분
-                        {c.walking_route_source === "osrm" ? " (실 경로)" : " (직선거리)"}
-                      </strong>
-                    </span>
-                  )}
-                  {c.category && <span> · {c.category}</span>}
-                </div>
-                {tr.rationale && (
-                  <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-                    {tr.rationale}
-                  </div>
-                )}
-                {tr.reasons.length > 0 && (
-                  <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
-                    선정 근거: {tr.reasons.join(" · ")}
-                  </div>
-                )}
-                <div className="actions" style={{ marginTop: 8 }}>
-                  {canRoute && (
-                    <button
-                      className="btn primary"
-                      onClick={() =>
-                        openKakaoFootRoute(
-                          { lat: c.lat!, lng: c.lng!, name: c.name },
-                          {
-                            lat: dest.lat,
-                            lng: dest.lng,
-                            name: destDisplayName,
-                          }
-                        )
-                      }
-                    >
-                      카카오맵 도보 길찾기
-                    </button>
-                  )}
-                  {c.url && (
-                    <button
-                      className="btn"
-                      onClick={() => window.open(c.url!, "_blank", "noopener,noreferrer")}
-                    >
-                      카카오맵에서 열기
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
-
-          {data.fallback && (data.fallback.summary || data.fallback.warnings.length > 0) && (
-            <div className="fallback-summary">
-              {data.fallback.summary && <div>{data.fallback.summary}</div>}
-              {data.fallback.warnings.map((w, i) => (
-                <div key={i} className="warn">⚠ {w}</div>
-              ))}
-            </div>
-          )}
-
-          {data.history_for_destination.length > 0 && (
-            <>
-              <h2 className="h2">이 목적지의 과거 기록</h2>
-              <ul className="list">
-                {data.history_for_destination.map(h => (
-                  <li key={h.visit_id} className="list-item">
-                    <span className="title">
-                      {h.selected_parking_name || "(주차장 미선택)"}
-                    </span>
-                    <span className="sub">
-                      {new Date(h.searched_at).toLocaleString("ko-KR")}
-                      {" · "}{h.actual_result ?? "결과 미입력"}
-                    </span>
-                    {h.memo && <span className="sub">메모: {h.memo}</span>}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-
+          {/* [4] 주차장 후보 리스트 — 3섹션 */}
           {(() => {
             const dbCount = data.candidates.length;
-            const ext = data.external_candidates || [];
-            const usableExt = ext.filter(e => e.usability === "usable");
-            const cautionExt = ext.filter(e => e.usability === "caution");
-            const excluded = data.fallback?.excluded_items || [];
-
             const recommendCount = dbCount + usableExt.length;
             const cautionCount = cautionExt.length;
             const excludedCount = excluded.length;
 
             if (recommendCount + cautionCount + excludedCount === 0) {
               return (
-                <p className="muted">
-                  현재 연결된 데이터 소스에서는 반경 {radius}m 내 주차장 후보를 찾지 못했습니다.
-                  카카오맵/현장 확인이 필요합니다.
-                </p>
+                <section className="empty-card">
+                  <div className="empty-title">주변 주차장 후보를 찾지 못했습니다</div>
+                  <div className="empty-detail">
+                    이 반경 안에서 추천 가능한 주차장이 확인되지 않았습니다. 반경을 늘리거나 현장
+                    확인이 필요합니다.
+                  </div>
+                </section>
               );
             }
             return (
               <>
-                <h2 className="h2">
-                  추천 가능 후보 {recommendCount}개
-                  {cautionCount > 0 ? ` · 주의 ${cautionCount}개` : ""}
-                  {excludedCount > 0 ? ` · 제외 ${excludedCount}개` : ""}
-                </h2>
+                <h2 className="h2">주변 주차장 후보</h2>
 
-                {dbCount > 0 && (
+                {/* A. 추천 가능 */}
+                {recommendCount > 0 && (
                   <>
-                    <div className="section-sub">
-                      공공데이터 기반 {dbCount}개 · 요금/실시간 정보 있음
+                    <div className="section-pill section-pill-good">
+                      추천 가능 {recommendCount}곳
                     </div>
                     <ul className="list">
                       {data.candidates.map(c => (
@@ -739,29 +782,19 @@ export default function AnalysisPage() {
                             c={c}
                             onSelect={startVisit}
                             onOpenMap={openKakaoMap}
-                            destinationLat={data.destination.lat}
-                            destinationLng={data.destination.lng}
-                            destinationName={data.destination.name || placeName || "목적지"}
+                            destinationLat={dest.lat}
+                            destinationLng={dest.lng}
+                            destinationName={destName}
                           />
                         </li>
                       ))}
-                    </ul>
-                  </>
-                )}
-
-                {usableExt.length > 0 && (
-                  <>
-                    <div className="section-sub">
-                      지도/웹 검색 기반 추천 {usableExt.length}개 · 운영/요금/실시간 확인 필요
-                    </div>
-                    <ul className="list">
                       {usableExt.map((e, i) => (
                         <li key={`u-${i}`}>
                           <ExternalCard
                             c={e}
-                            destinationLat={data.destination.lat}
-                            destinationLng={data.destination.lng}
-                            destinationName={data.destination.name || placeName || "목적지"}
+                            destinationLat={dest.lat}
+                            destinationLng={dest.lng}
+                            destinationName={destName}
                           />
                         </li>
                       ))}
@@ -769,19 +802,23 @@ export default function AnalysisPage() {
                   </>
                 )}
 
-                {cautionExt.length > 0 && (
+                {/* B. 확인 필요 */}
+                {cautionCount > 0 && (
                   <>
-                    <div className="section-sub" style={{ color: "#b85c00" }}>
-                      ⚠ 확인 필요 후보 {cautionExt.length}개 · 일반 개방 여부 확인 후 이용
+                    <div className="section-pill section-pill-caution">
+                      확인 필요 {cautionCount}곳
+                    </div>
+                    <div className="section-help">
+                      운영/요금/일반 개방 여부가 명확하지 않은 후보입니다. 방문 전 확인 후 이용하세요.
                     </div>
                     <ul className="list">
                       {cautionExt.map((e, i) => (
                         <li key={`c-${i}`}>
                           <ExternalCard
                             c={e}
-                            destinationLat={data.destination.lat}
-                            destinationLng={data.destination.lng}
-                            destinationName={data.destination.name || placeName || "목적지"}
+                            destinationLat={dest.lat}
+                            destinationLng={dest.lng}
+                            destinationName={destName}
                           />
                         </li>
                       ))}
@@ -789,19 +826,23 @@ export default function AnalysisPage() {
                   </>
                 )}
 
-                {excluded.length > 0 && (
+                {/* C. 추천 제외 — 접힘 */}
+                {excludedCount > 0 && (
                   <details className="excluded-block">
                     <summary>
-                      추천 제외 {excluded.length}개 보기 (타 매장/기관 전용 추정)
+                      추천 제외 {excludedCount}곳 보기 (타 매장/기관 전용으로 보이는 후보)
                     </summary>
+                    <div className="section-help">
+                      목적지 방문자가 임의로 이용하기 어려울 수 있어 추천에서 제외했습니다.
+                    </div>
                     <ul className="list" style={{ marginTop: 8 }}>
                       {excluded.map((e, i) => (
                         <li key={`x-${i}`}>
                           <ExternalCard
                             c={e}
-                            destinationLat={data.destination.lat}
-                            destinationLng={data.destination.lng}
-                            destinationName={data.destination.name || placeName || "목적지"}
+                            destinationLat={dest.lat}
+                            destinationLng={dest.lng}
+                            destinationName={destName}
                           />
                         </li>
                       ))}
@@ -811,6 +852,38 @@ export default function AnalysisPage() {
               </>
             );
           })()}
+
+          {/* 과거 기록 */}
+          {data.history_for_destination.length > 0 && (
+            <>
+              <h2 className="h2">이 목적지의 과거 기록</h2>
+              <ul className="list">
+                {data.history_for_destination.map(h => (
+                  <li key={h.visit_id} className="list-item">
+                    <span className="title">{h.selected_parking_name || "(주차장 미선택)"}</span>
+                    <span className="sub">
+                      {new Date(h.searched_at).toLocaleString("ko-KR")}
+                      {" · "}
+                      {h.actual_result ?? "결과 미입력"}
+                    </span>
+                    {h.memo && <span className="sub">메모: {h.memo}</span>}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {/* 데이터 기준 — 접힘 */}
+          <details className="data-source">
+            <summary>데이터 기준</summary>
+            <ul className="data-source-list">
+              <li>공식 주차장 데이터 (시·도 공공 주차장)</li>
+              <li>카카오맵 등록 주차장 검색</li>
+              <li>네이버 블로그/카페 후기 (자체 주차 판단·메뉴 추출)</li>
+              <li>실시간 잔여면수는 일부 공영주차장만 제공됩니다</li>
+              <li>운영/요금은 현장과 다를 수 있으며 방문 전 확인을 권장합니다</li>
+            </ul>
+          </details>
         </>
       )}
     </div>

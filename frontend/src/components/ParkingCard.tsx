@@ -27,29 +27,34 @@ export default function ParkingCard({
     );
   }
 
+  const distM = c.walking_route_distance_m ?? c.distance_m;
+  const distLabel = c.walking_route_source === "osrm" ? "실 도보 경로" : "직선거리 기준";
+
   return (
-    <div className="pcard">
+    <div className="pcard pcard-usable">
       <div className="head">
-        <span className="name">{c.name}</span>
+        <span className="tag tag-verdict-good">추천 가능</span>
         <RiskBadge value={c.congestion} />
       </div>
+      <div className="name" style={{ fontWeight: 700, marginTop: 4 }}>
+        {c.name}
+      </div>
+      <div className="meta meta-walk">
+        {c.walk_minutes != null ? (
+          <strong>목적지까지 도보 약 {c.walk_minutes}분</strong>
+        ) : (
+          <strong>도보 시간 산정 불가</strong>
+        )}
+        {distM != null && (
+          <span style={{ marginLeft: 6 }}>
+            · {distM}m ({distLabel})
+          </span>
+        )}
+      </div>
       <div className="meta">
-        <span>
-          {c.walking_route_distance_m != null
-            ? `${c.walking_route_distance_m}m · 도보 약 ${c.walk_minutes ?? "?"}분 (${c.walking_route_source === "osrm" ? "실 경로" : "직선거리"})`
-            : `${c.distance_m}m · 직선거리 기준 도보 약 ${c.walk_minutes ?? "?"}분`}
-        </span>
-        {c.type && <span>· {c.type}</span>}
+        {c.type && <span>{c.type}</span>}
         {c.capacity != null && <span>· 총 {c.capacity}면</span>}
         {c.is_open_now === false && <span>· 운영시간 외</span>}
-      </div>
-      <div className="walk-block">
-        <div className="muted" style={{ fontSize: 11 }}>
-          {c.walking_route_source === "osrm"
-            ? "실 도보 경로는 OpenStreetMap 기반 추정치입니다."
-            : "직선거리 추정치 — 실 경로는 다를 수 있습니다."}{" "}
-          이 주차장은 목적지 자체 주차장이 아닙니다.
-        </div>
       </div>
       {c.realtime && (
         <div className="meta">
@@ -60,9 +65,6 @@ export default function ParkingCard({
         </div>
       )}
       {c.fee_summary && <div className="meta">{c.fee_summary}</div>}
-      {c.reasons.length > 0 && (
-        <div className="reasons">· {c.reasons.slice(0, 3).join(" · ")}</div>
-      )}
       {c.history && c.history.my_visits > 0 && (
         <div className="reasons">
           내 방문 {c.history.my_visits}회
@@ -71,18 +73,18 @@ export default function ParkingCard({
         </div>
       )}
       <div className="actions">
-        <button className="btn primary" onClick={() => onSelect?.(c)}>
-          이 주차장으로 가기
-        </button>
         {destinationLat != null && destinationLng != null ? (
-          <button className="btn" onClick={openFootRoute}>
-            카카오맵 도보 길찾기
+          <button className="btn primary" onClick={openFootRoute}>
+            도보 길찾기
           </button>
         ) : (
-          <button className="btn" onClick={() => onOpenMap?.(c)}>
-            카카오맵 길찾기
+          <button className="btn primary" onClick={() => onOpenMap?.(c)}>
+            카카오맵에서 열기
           </button>
         )}
+        <button className="btn" onClick={() => onSelect?.(c)}>
+          이 주차장으로 가기
+        </button>
       </div>
     </div>
   );
