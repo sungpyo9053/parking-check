@@ -1,0 +1,117 @@
+# SETUP
+
+## 1. 사전 요구사항
+
+- macOS / Linux
+- Python 3.11
+- Node.js 20 + npm
+- PostgreSQL 16 + PostGIS 3
+- (옵션) Docker / Docker Compose
+
+## 2. 저장소 클론
+
+```bash
+git clone <repo-url> parking
+cd parking
+```
+
+## 3. 환경변수 설정
+
+```bash
+cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+```
+
+`.env`, `backend/.env`, `frontend/.env` 에 실제 키를 채운다. 이 파일들은 `.gitignore` 로 막혀 있으니 절대 커밋하지 말 것.
+
+채워야 하는 값:
+
+- `KAKAO_REST_API_KEY` (`.env`, `backend/.env`) — Kakao Developers
+- `VITE_KAKAO_JAVASCRIPT_KEY` (`frontend/.env`) — Kakao Developers
+- `DATABASE_URL` (`.env`, `backend/.env`) — 로컬 Postgres 접속 문자열
+- `SEOUL_OPENAPI_KEY` (선택) — 서울 열린데이터광장
+
+## 4. PostgreSQL + PostGIS
+
+### 4-A. Homebrew (로컬)
+
+```bash
+brew install postgresql@16 postgis
+brew services start postgresql@16
+createdb parking
+psql -d parking -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+psql -d parking < backend/db/init.sql
+```
+
+확인:
+
+```bash
+psql -d parking -c "SELECT PostGIS_Version();"
+psql -d parking -c "\dt"
+```
+
+### 4-B. docker-compose
+
+```bash
+docker compose up -d db
+```
+
+컨테이너 최초 부팅 시 `backend/db/init.sql` 이 자동 실행되어 PostGIS 확장과 테이블이 생성된다.
+
+## 5. Python venv + 백엔드 의존성
+
+```bash
+cd backend
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+
+## 6. 백엔드 실행
+
+```bash
+cd backend
+source .venv/bin/activate
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+확인:
+
+```bash
+curl http://localhost:8000/api/health
+```
+
+## 7. 프론트엔드 실행
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+브라우저: http://localhost:5173
+
+## 8. Kakao Developers 도메인 등록
+
+Kakao Developers → 내 애플리케이션 → 플랫폼 → Web 사이트 도메인:
+
+- `http://localhost:5173`
+- `http://127.0.0.1:5173`
+- `http://localhost:5174` (Vite 가 5173 을 못 잡으면 fallback)
+- `http://127.0.0.1:5174`
+
+미등록 시 SDK script 가 onerror 로 떨어진다.
+
+## 9. (선택) 공공데이터 주차장 CSV 적재
+
+```bash
+# https://www.data.go.kr/data/15012890/standard.do 에서 다운로드
+# backend/scripts/data/parking.csv 로 저장 (이 디렉토리는 Git 제외)
+
+cd backend
+source .venv/bin/activate
+python scripts/load_parking_csv.py scripts/data/parking.csv
+
+psql -d parking -c "SELECT COUNT(*) FROM parking_lots;"
+```

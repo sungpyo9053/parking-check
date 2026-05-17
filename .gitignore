@@ -1,0 +1,54 @@
+# --- env (절대 커밋 금지) ---
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+deploy.local.env
+.env.server
+.env.deploy
+
+# --- python ---
+backend/.venv/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- node / frontend build ---
+frontend/node_modules/
+node_modules/
+frontend/dist/
+dist/
+build/
+coverage/
+.vite/
+
+# --- 데이터 (CSV/XLSX/JSON 원본 적재 데이터) ---
+backend/scripts/data/*
+!backend/scripts/data/.gitkeep
+
+# --- 로그 / 인증서 / 비밀 ---
+*.log
+*.pem
+*.key
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+.DS_Store
+
+# --- Docker / DB volume ---
+postgres_data/
+
+# --- Claude Code 세션 ---
+.claude/
