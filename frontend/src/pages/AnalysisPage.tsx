@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, AnalyzeResponse, Candidate } from "../lib/api";
 import KakaoMap, { MapMarker } from "../components/KakaoMap";
 import ParkingCard from "../components/ParkingCard";
+import ExternalCard from "../components/ExternalCard";
 
 const SELF_LABEL = {
   available: "자체 주차 가능성 높음",
@@ -40,6 +41,9 @@ export default function AnalysisPage() {
 
   const markers = useMemo<MapMarker[]>(() => {
     if (!data) return [];
+    const externalWithCoords = (data.external_candidates || []).filter(
+      e => e.lat != null && e.lng != null
+    );
     return [
       {
         id: "dest",
@@ -53,6 +57,13 @@ export default function AnalysisPage() {
         lat: c.lat,
         lng: c.lng,
         label: c.name,
+        kind: "parking"
+      })),
+      ...externalWithCoords.map<MapMarker>((e, i) => ({
+        id: `ext-${i}`,
+        lat: e.lat as number,
+        lng: e.lng as number,
+        label: e.name,
         kind: "parking"
       }))
     ];
@@ -119,7 +130,10 @@ export default function AnalysisPage() {
             <div className="row">
               <span className="label">자체 주차 가능성</span>
               <span>
-                {SELF_LABEL[data.self_parking.status]} ({data.self_parking.confidence}점)
+                {SELF_LABEL[data.self_parking.status]}
+                {data.self_parking.status === "available" || data.self_parking.status === "uncertain"
+                  ? ` (${data.self_parking.confidence}점)`
+                  : ""}
               </span>
             </div>
             {data.self_parking.reason && (
@@ -128,11 +142,20 @@ export default function AnalysisPage() {
               </div>
             )}
             <div className="row">
-              <span className="label">주변 주차장</span>
+              <span className="label">DB 등록 후보</span>
               <span>
-                {data.summary.nearby_count}개 / 최근접 {data.summary.nearest_distance_m ?? "-"}m
+                {data.summary.nearby_count}개
+                {data.summary.nearest_distance_m != null
+                  ? ` / 최근접 ${data.summary.nearest_distance_m}m`
+                  : ""}
               </span>
             </div>
+            {data.external_candidates && data.external_candidates.length > 0 && (
+              <div className="row">
+                <span className="label">외부 검색 후보</span>
+                <span>{data.external_candidates.length}개</span>
+              </div>
+            )}
             <div className="row">
               <span className="label">만차 위험</span>
               <span>{data.summary.any_full_risk ? "있음" : "낮음"}</span>
@@ -142,6 +165,15 @@ export default function AnalysisPage() {
               <span>{data.summary.data_quality}</span>
             </div>
           </div>
+
+          {data.fallback && (data.fallback.summary || data.fallback.warnings.length > 0) && (
+            <div className="fallback-summary">
+              {data.fallback.summary && <div>{data.fallback.summary}</div>}
+              {data.fallback.warnings.map((w, i) => (
+                <div key={i} className="warn">⚠ {w}</div>
+              ))}
+            </div>
+          )}
 
           {data.history_for_destination.length > 0 && (
             <>
@@ -163,17 +195,43 @@ export default function AnalysisPage() {
             </>
           )}
 
-          <h2 className="h2">추천 주차장</h2>
-          {data.candidates.length === 0 && (
-            <p className="muted">반경 {radius}m 내 등록된 주차장이 없습니다. 반경을 늘려보세요.</p>
+          {data.candidates.length > 0 && (
+            <>
+              <h2 className="h2">공공데이터 기반 주차장</h2>
+              <ul className="list">
+                {data.candidates.map(c => (
+                  <li key={c.id}>
+                    <ParkingCard c={c} onSelect={startVisit} onOpenMap={openKakaoMap} />
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
-          <ul className="list">
-            {data.candidates.map(c => (
-              <li key={c.id}>
-                <ParkingCard c={c} onSelect={startVisit} onOpenMap={openKakaoMap} />
-              </li>
-            ))}
-          </ul>
+
+          {data.external_candidates && data.external_candidates.length > 0 && (
+            <>
+              <h2 className="h2">참고 후보 (확인 필요)</h2>
+              <ul className="list">
+                {data.external_candidates.map((e, i) => (
+                  <li key={`ext-${i}`}>
+                    <ExternalCard
+                      c={e}
+                      destinationLat={data.destination.lat}
+                      destinationLng={data.destination.lng}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {data.candidates.length === 0 &&
+            (!data.external_candidates || data.external_candidates.length === 0) && (
+              <p className="muted">
+                현재 연결된 데이터 소스에서는 반경 {radius}m 내 주차장 후보를 찾지 못했습니다.
+                카카오맵/현장 확인이 필요합니다.
+              </p>
+            )}
         </>
       )}
     </div>

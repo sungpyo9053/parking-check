@@ -82,6 +82,60 @@ class AnalyzeSummary(BaseModel):
     data_quality: Literal["rich", "partial", "sparse"] = "sparse"
 
 
+# --- 외부(Kakao / Web Search) 폴백 후보 ---
+
+CandidateSource = Literal["public_db", "kakao_fallback", "web_search"]
+
+
+class ExternalCandidate(BaseModel):
+    """DB 에 없는 보조 후보. 카카오 지도 검색 결과 또는 웹 검색 결과.
+
+    공통:
+      - 실시간/요금/운영여부는 단정하지 않는다. fee_summary/realtime_status 는 "확인 필요" 고정.
+      - source/source_label 로 카드 UI 구분.
+    """
+
+    source: CandidateSource
+    source_label: str
+    name: str
+    title: str | None = None
+    url: str | None = None
+    snippet: str | None = None
+    distance_m: int | None = None
+    lat: float | None = None
+    lng: float | None = None
+    address: str | None = None
+    road_address: str | None = None
+    category: str | None = None
+    capacity: int | None = None
+    available_count: int | None = None
+    fee_summary: str = "확인 필요"
+    realtime_status: str = "실시간 정보 없음"
+    confidence: Literal["low", "medium", "high"] = "low"
+    warning: str = (
+        "웹 검색/외부 지도 기반 정보입니다. 운영 여부와 위치는 방문 전 확인이 필요합니다."
+    )
+
+
+class FallbackInfo(BaseModel):
+    """DB → Kakao → Web Search 단계 결과 메타.
+
+    summary 는 처음에는 rule-based 로 생성되고, 추후 LLM 요약으로 교체할 수 있게
+    evidence_items / warnings 도 함께 노출한다.
+    """
+
+    db_count: int = 0
+    kakao_pk6_count: int = 0
+    kakao_keyword_count: int = 0
+    web_search_count: int = 0
+    web_search_enabled: bool = False
+    web_search_executed: bool = False
+    sources_tried: list[str] = []
+    evidence_items: list[ExternalCandidate] = []
+    summary: str | None = None
+    warnings: list[str] = []
+
+
 class Destination(BaseModel):
     place_id: int | None = None
     name: str | None = None
@@ -103,5 +157,7 @@ class AnalyzeResponse(BaseModel):
     self_parking: SelfParking
     summary: AnalyzeSummary
     candidates: list[Candidate]
+    external_candidates: list[ExternalCandidate] = []
+    fallback: FallbackInfo | None = None
     history_for_destination: list[HistoryForDestination] = []
     disclaimers: list[str] = []

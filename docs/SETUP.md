@@ -29,7 +29,7 @@ cp frontend/.env.example frontend/.env
 
 - `KAKAO_REST_API_KEY` (`.env`, `backend/.env`) — Kakao Developers
 - `VITE_KAKAO_JAVASCRIPT_KEY` (`frontend/.env`) — Kakao Developers
-- `DATABASE_URL` (`.env`, `backend/.env`) — 로컬 Postgres 접속 문자열
+- `DATABASE_URL` (`.env`, `backend/.env`) — **필수**. 누락 시 백엔드 부팅이 ValidationError 로 즉시 실패한다. Homebrew 로컬용 / docker-compose 용 두 형태 중 하나를 주석에서 골라 쓴다.
 - `SEOUL_OPENAPI_KEY` (선택) — 서울 열린데이터광장
 
 ## 4. PostgreSQL + PostGIS
@@ -52,8 +52,15 @@ psql -d parking < backend/db/init.sql
 확인:
 
 ```bash
-psql -d parking -c "SELECT PostGIS_Version();"
-psql -d parking -c "\dt"
+psql -d parking -c "SELECT version();"           # PostgreSQL 17.x 이어야 함
+psql -d parking -c "SELECT PostGIS_Version();"   # 3.6.x
+psql -d parking -c "\dt"                         # places, parking_lots, ... 노출
+```
+
+스키마 적용 후 좌표/지오메트리가 정상인지 한 줄 검증:
+
+```bash
+psql -d parking -c "SELECT ST_AsText(ST_SetSRID(ST_MakePoint(127.0,37.5),4326));"
 ```
 
 ### 4-B. docker-compose

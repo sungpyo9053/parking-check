@@ -16,9 +16,9 @@ class Settings(BaseSettings):
     KAKAO_REST_API_KEY: str = ""
     SEOUL_OPENAPI_KEY: str = ""
 
-    DATABASE_URL: str = (
-        "postgresql+psycopg2://parking:parking@localhost:5432/parking"
-    )
+    # DATABASE_URL 은 반드시 .env 에서 받는다. 기본값으로 깔아두면 잘못된 DB 에
+    # 조용히 붙어버리는 사고가 나므로, 누락 시 ValidationError 로 명확히 실패시킨다.
+    DATABASE_URL: str = Field(..., min_length=1)
 
     BACKEND_BASE_URL: str = "http://localhost:8000"
     FRONTEND_BASE_URL: str = "http://localhost:5173"
@@ -27,6 +27,10 @@ class Settings(BaseSettings):
         "http://localhost:5173,http://127.0.0.1:5173,"
         "http://localhost:5174,http://127.0.0.1:5174"
     )
+
+    # --- Web Search fallback ---
+    TAVILY_API_KEY: str = ""
+    WEB_SEARCH_ENABLED: bool = False
 
     @property
     def cors_origin_list(self) -> list[str]:

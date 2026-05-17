@@ -13,6 +13,7 @@ from ..schemas.parking import (
     AnalyzeSummary,
     Candidate,
     Destination,
+    ExternalCandidate,
     HistoryBlock,
     HistoryForDestination,
     HistoryLastVisit,
@@ -21,6 +22,7 @@ from ..schemas.parking import (
     RealtimeBlock,
     SelfParking,
 )
+from ..services.parking_fallback import collect_external_candidates
 from ..services.parking_search import latest_realtime_for_lots, nearby_parking_lots
 from ..services.recommendation import (
     classify_congestion,
@@ -209,6 +211,39 @@ def analyze(
 
     disclaimers = ["실시간 정보는 현장과 5분 이상 차이가 날 수 있습니다."]
 
+    # --- 외부(Kakao/Web) 폴백 ---
+    # DB 후보를 dedup 비교용 ExternalCandidate 로 가볍게 표현 (UI 에는 노출 안 함).
+    db_as_external = [
+        ExternalCandidate(
+            source="public_db",
+            source_label="공공데이터 기반",
+            name=c.name,
+            lat=c.lat,
+            lng=c.lng,
+        )
+        for c in candidates
+    ]
+    fallback = collect_external_candidates(
+        db_count=len(candidates),
+        db_existing=db_as_external,
+        destination_name=dest_name,
+        destination_address=dest_addr,
+        lat=dest_lat,
+        lng=dest_lng,
+        radius_m=radius,
+    )
+    external_candidates = list(fallback.evidence_items)
+
+    if len(candidates) == 0 and len(external_candidates) == 0:
+        disclaimers.append(
+            "현재 연결된 데이터 소스에서는 반경 내 주차장 후보를 찾지 못했습니다. "
+            "카카오맵/현장 확인이 필요합니다."
+        )
+    if len(external_candidates) > 0:
+        disclaimers.append(
+            "카카오/웹 검색 기반 후보는 실시간 가용 여부를 알 수 없으니 방문 전 확인이 필요합니다."
+        )
+
     return AnalyzeResponse(
         destination=Destination(
             place_id=dest_place.id if dest_place else None,
@@ -220,6 +255,8 @@ def analyze(
         self_parking=SelfParking(**self_parking),
         summary=summary,
         candidates=candidates,
+        external_candidates=external_candidates,
+        fallback=fallback,
         history_for_destination=history_dest_rows,
         disclaimers=disclaimers,
     )

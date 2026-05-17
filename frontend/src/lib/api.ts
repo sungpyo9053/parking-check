@@ -82,6 +82,8 @@ export type AnalyzeResponse = {
     data_quality: "rich" | "partial" | "sparse";
   };
   candidates: Candidate[];
+  external_candidates: ExternalCandidate[];
+  fallback: FallbackInfo | null;
   history_for_destination: Array<{
     visit_id: number;
     selected_parking_name: string | null;
@@ -90,6 +92,42 @@ export type AnalyzeResponse = {
     memo: string | null;
   }>;
   disclaimers: string[];
+};
+
+export type CandidateSource = "public_db" | "kakao_fallback" | "web_search";
+
+export type ExternalCandidate = {
+  source: CandidateSource;
+  source_label: string;
+  name: string;
+  title: string | null;
+  url: string | null;
+  snippet: string | null;
+  distance_m: number | null;
+  lat: number | null;
+  lng: number | null;
+  address: string | null;
+  road_address: string | null;
+  category: string | null;
+  capacity: number | null;
+  available_count: number | null;
+  fee_summary: string;
+  realtime_status: string;
+  confidence: "low" | "medium" | "high";
+  warning: string;
+};
+
+export type FallbackInfo = {
+  db_count: number;
+  kakao_pk6_count: number;
+  kakao_keyword_count: number;
+  web_search_count: number;
+  web_search_enabled: boolean;
+  web_search_executed: boolean;
+  sources_tried: string[];
+  evidence_items: ExternalCandidate[];
+  summary: string | null;
+  warnings: string[];
 };
 
 export type Visit = {

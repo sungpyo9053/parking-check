@@ -1,0 +1,269 @@
+"""DB → Kakao(PK6) → Kakao(keyword) → Web Search 순으로 보조 후보를 모은다.
+
+원칙:
+- DB 후보가 충분하면 (>= MIN_DB) 폴백 호출하지 않는다.
+- Kakao 결과는 카테고리(PK6) → 키워드 순으로 시도하고, 둘 다 합쳐서 dedup.
+- 위 모두 합쳐도 0 이면 Web Search 폴백을 시도 (WEB_SEARCH_ENABLED 일 때만).
+- 어떤 단계 결과에도 "실시간/운영 여부"를 단정하지 않는다.
+- summary 는 rule-based 한 줄 — 추후 LLM 요약으로 교체할 자리.
+"""
+from __future__ import annotations
+
+import logging
+import math
+import re
+
+from ..schemas.parking import ExternalCandidate, FallbackInfo
+from . import kakao as kakao_svc
+from . import web_parking_search
+
+logger = logging.getLogger(__name__)
+
+# DB 후보가 이 미만이면 Kakao 폴백을 합친다.
+MIN_DB = 3
+# Kakao 두 단계 합산이 이 미만이고 DB 도 0 이면 웹 검색 폴백 시도.
+WEB_FALLBACK_THRESHOLD = 1
+
+
+# --------------- helpers ---------------
+
+_PUNCT_RE = re.compile(r"[\s\-_·,()\[\]/\\]+")
+
+
+def _norm(s: str | None) -> str:
+    if not s:
+        return ""
+    return _PUNCT_RE.sub("", s).lower()
+
+
+def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> int:
+    R = 6_371_000.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lng2 - lng1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    c = 2 * math.asin(math.sqrt(a))
+    return int(R * c)
+
+
+def _kakao_doc_to_external(
+    doc: dict,
+    source: str,
+    source_label: str,
+    origin_lat: float,
+    origin_lng: float,
+) -> ExternalCandidate | None:
+    try:
+        lat = float(doc["y"])
+        lng = float(doc["x"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    dist = _haversine_m(origin_lat, origin_lng, lat, lng)
+    return ExternalCandidate(
+        source=source,  # type: ignore[arg-type]
+        source_label=source_label,
+        name=(doc.get("place_name") or "이름 미상").strip() or "이름 미상",
+        title=doc.get("place_name"),
+        url=doc.get("place_url"),
+        snippet=doc.get("category_name") or doc.get("address_name"),
+        distance_m=dist,
+        lat=lat,
+        lng=lng,
+        address=doc.get("address_name"),
+        road_address=doc.get("road_address_name"),
+        category=doc.get("category_name"),
+    )
+
+
+def _web_result_to_external(item: dict) -> ExternalCandidate:
+    title = item.get("title") or "웹 검색 결과"
+    return ExternalCandidate(
+        source="web_search",
+        source_label="웹 검색 기반",
+        name=title,
+        title=title,
+        url=item.get("url"),
+        snippet=item.get("snippet"),
+    )
+
+
+def _dedup(existing: list[ExternalCandidate], new: list[ExternalCandidate]) -> list[ExternalCandidate]:
+    """기존 DB candidates 와 외부 후보 사이의 중복도 일부 거른다.
+
+    중복 기준:
+      - URL 동일
+      - 같은 좌표 (5m 이내) 추정
+      - 정규화 이름 동일
+      - 정규화 주소 동일
+    """
+    seen_urls: set[str] = {e.url for e in existing if e.url}
+    seen_names: set[str] = {_norm(e.name) for e in existing if e.name}
+    seen_addrs: set[str] = {_norm(e.address or e.road_address) for e in existing if (e.address or e.road_address)}
+    coords: list[tuple[float, float]] = [
+        (e.lat, e.lng) for e in existing if e.lat is not None and e.lng is not None
+    ]
+
+    out: list[ExternalCandidate] = []
+    for c in new:
+        if c.url and c.url in seen_urls:
+            continue
+        norm_name = _norm(c.name)
+        if norm_name and norm_name in seen_names:
+            continue
+        addr_key = _norm(c.address or c.road_address)
+        if addr_key and addr_key in seen_addrs:
+            continue
+        if c.lat is not None and c.lng is not None:
+            too_close = any(
+                _haversine_m(c.lat, c.lng, la, ln) <= 5 for la, ln in coords
+            )
+            if too_close:
+                continue
+            coords.append((c.lat, c.lng))
+        if c.url:
+            seen_urls.add(c.url)
+        if norm_name:
+            seen_names.add(norm_name)
+        if addr_key:
+            seen_addrs.add(addr_key)
+        out.append(c)
+    return out
+
+
+def _build_summary(
+    db_count: int,
+    kakao_total: int,
+    web_count: int,
+    web_enabled: bool,
+    web_executed: bool,
+) -> tuple[str, list[str]]:
+    parts: list[str] = []
+    warnings: list[str] = []
+
+    if db_count == 0:
+        parts.append("공공데이터(parking_lots) 에는 등록된 후보가 없습니다.")
+    elif db_count < MIN_DB:
+        parts.append(f"공공데이터 후보 {db_count}개를 찾았습니다.")
+    else:
+        parts.append(f"공공데이터 후보 {db_count}개를 찾았습니다.")
+
+    if kakao_total > 0:
+        parts.append(f"카카오 지도 검색에서 보조 후보 {kakao_total}개를 추가했습니다.")
+        warnings.append("카카오 지도 결과는 실시간 잔여/요금/운영 여부 정보가 없습니다.")
+
+    if web_executed:
+        if web_count > 0:
+            parts.append(
+                f"웹 검색에서 주차 관련 정보 {web_count}건이 확인되었습니다."
+            )
+            warnings.append(
+                "웹 검색 결과는 운영 여부와 위치 모두 부정확할 수 있어 방문 전 확인이 필요합니다."
+            )
+        else:
+            parts.append("웹 검색에서도 관련 정보를 찾지 못했습니다.")
+    elif db_count + kakao_total == 0 and not web_enabled:
+        parts.append("(웹 검색 폴백은 비활성화 상태입니다.)")
+
+    if db_count + kakao_total + web_count == 0:
+        parts.append(
+            "현재 연결된 데이터 소스에서는 반경 내 주차장 후보를 찾지 못했습니다. "
+            "카카오맵/현장 확인이 필요합니다."
+        )
+
+    return " ".join(parts), warnings
+
+
+# --------------- main ---------------
+
+def collect_external_candidates(
+    db_count: int,
+    db_existing: list[ExternalCandidate],
+    *,
+    destination_name: str | None,
+    destination_address: str | None,
+    lat: float,
+    lng: float,
+    radius_m: int,
+) -> FallbackInfo:
+    """DB 결과를 받아 외부 폴백 후보를 수집해서 FallbackInfo 로 돌려준다.
+
+    db_existing 은 DB 후보를 외부 후보 형태로 가벼이 표현한 리스트로,
+    dedup 비교에만 사용된다.
+    """
+    info = FallbackInfo(
+        db_count=db_count,
+        web_search_enabled=web_parking_search.is_enabled(),
+        sources_tried=["public_db"],
+    )
+
+    external: list[ExternalCandidate] = []
+
+    if db_count < MIN_DB:
+        # Kakao PK6 (주차장 카테고리)
+        try:
+            pk6 = kakao_svc.search_parking_nearby(lat=lat, lng=lng, radius_m=radius_m)
+        except kakao_svc.KakaoAPIError as e:
+            logger.warning("kakao PK6 fallback failed: %s", e)
+            pk6 = []
+        info.sources_tried.append("kakao_pk6")
+        pk6_ext = [
+            ec
+            for d in pk6
+            if (ec := _kakao_doc_to_external(d, "kakao_fallback", "카카오 지도 검색 기반", lat, lng))
+            is not None
+        ]
+        pk6_ext = _dedup(db_existing + external, pk6_ext)
+        info.kakao_pk6_count = len(pk6_ext)
+        external.extend(pk6_ext)
+
+        # 추가로 keyword 검색까지 — DB+PK6 합쳐도 부족할 때만
+        if db_count + len(external) < MIN_DB:
+            try:
+                kw_docs = kakao_svc.search_keyword("주차장", size=10)
+            except kakao_svc.KakaoAPIError as e:
+                logger.warning("kakao keyword fallback failed: %s", e)
+                kw_docs = []
+            info.sources_tried.append("kakao_keyword")
+            kw_ext = [
+                ec
+                for d in kw_docs
+                if (
+                    ec := _kakao_doc_to_external(
+                        d, "kakao_fallback", "카카오 지도 검색 기반", lat, lng
+                    )
+                )
+                is not None
+                and (ec.distance_m or 0) <= max(radius_m * 2, 2000)
+            ]
+            kw_ext = _dedup(db_existing + external, kw_ext)
+            info.kakao_keyword_count = len(kw_ext)
+            external.extend(kw_ext)
+
+    kakao_total = info.kakao_pk6_count + info.kakao_keyword_count
+
+    # 웹 검색 폴백: DB + Kakao 합산이 임계 미만일 때만 시도
+    if db_count + kakao_total < WEB_FALLBACK_THRESHOLD and info.web_search_enabled:
+        info.sources_tried.append("web_search")
+        info.web_search_executed = True
+        try:
+            web_items = web_parking_search.search_web_parking(
+                destination_name=destination_name,
+                destination_address=destination_address,
+            )
+        except Exception as e:  # noqa: BLE001 — 폴백은 절대 라우터 전체를 죽이지 않는다
+            logger.warning("web search fallback failed: %s", e)
+            web_items = []
+        web_ext = [_web_result_to_external(i) for i in web_items]
+        web_ext = _dedup(db_existing + external, web_ext)
+        info.web_search_count = len(web_ext)
+        external.extend(web_ext)
+
+    info.evidence_items = external
+    info.summary, info.warnings = _build_summary(
+        db_count=db_count,
+        kakao_total=kakao_total,
+        web_count=info.web_search_count,
+        web_enabled=info.web_search_enabled,
+        web_executed=info.web_search_executed,
+    )
+    return info

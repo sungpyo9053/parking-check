@@ -37,8 +37,9 @@ Backend:
 - Pydantic / pydantic-settings
 
 Database:
-- PostgreSQL 17
+- PostgreSQL 17 권장 (로컬 검증 환경)
 - PostGIS 3 (3.6.x 검증됨)
+- PostgreSQL 16 을 쓸 경우 Homebrew `postgis` 포뮬러가 PG17 빌드만 제공하므로, PG16 용 PostGIS extension 경로 호환성을 직접 확인해야 한다. (`CREATE EXTENSION postgis` 시 "extension control file ... not found" 가 뜨면 PG16 에 PostGIS 가 안 깔린 것.)
 
 External APIs:
 - Kakao Local API (장소 검색)
@@ -242,3 +243,21 @@ psql -d parking -c "SELECT COUNT(*) FROM parking_lots;"
 - [보안 가이드](docs/SECURITY.md)
 - [QA 체크리스트](docs/QA.md)
 - [구현 태스크](docs/TASKS.md)
+
+---
+
+## GitHub About (추천)
+
+레포 페이지 우측 "About" 패널에 넣을 값 추천. 공개 전환을 가정한 톤.
+
+**Description**
+
+> 목적지를 입력하면 주차 가능성을 판단하고 실제 결과를 기록하는 개인용 주차 판단 PWA. FastAPI + PostgreSQL/PostGIS + React/Vite + Kakao Maps/Local API.
+
+**Topics**
+
+```
+parking pwa react vite typescript fastapi postgresql postgis kakao-maps kakao-local geospatial korea
+```
+
+**Website**: (배포 후 채우기) 예: `https://parking-check.example.com`
