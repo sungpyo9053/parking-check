@@ -218,6 +218,24 @@ export default function AnalysisPage() {
 
       {data && (
         <>
+          {data.analysis_summary && (
+            <div
+              style={{
+                background: "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)",
+                border: "1px solid #c4b5fd",
+                borderRadius: 10,
+                padding: "10px 14px",
+                margin: "8px 0 12px",
+                fontSize: 14,
+                lineHeight: 1.55,
+                color: "#4c1d95",
+              }}
+            >
+              <span style={{ fontWeight: 700, marginRight: 6 }}>💡 한줄 요약</span>
+              {data.analysis_summary}
+            </div>
+          )}
+
           <KakaoMap
             center={{ lat: data.destination.lat, lng: data.destination.lng }}
             markers={markers}

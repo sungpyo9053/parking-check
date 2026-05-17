@@ -124,3 +124,97 @@ def summarize(
 
 def cache_stats() -> dict:
     return _CACHE.stats()
+
+
+# ---------------------------------------------------------------------------
+# 전체 분석 요약 — self_parking + top_recommendation + 외부 후보 묶어서
+# 사용자에게 "이 장소 주차 한 줄 안내" 자연어 1~2 문장 생성
+# ---------------------------------------------------------------------------
+
+_ANALYSIS_CACHE: TTLCache[tuple, str] = TTLCache(max_size=512, ttl_seconds=6 * 3600)
+
+_ANALYSIS_SYSTEM_PROMPT = """너는 주차 정보 통합 안내 도우미다.
+사용자가 어떤 장소를 검색했을 때, 분석 결과(자체 주차 여부 + 추천 외부 주차장 +
+거리/도보 시간 + 주의사항) 를 한국어로 정확히 1~2 문장으로 통합 요약한다.
+
+규칙:
+- 출력은 1~2 문장만. 마크다운/이모지/리스트 금지.
+- 자체 주차 가능 여부와 추천 주차장을 둘 다 언급.
+- 도보 분/거리가 있으면 자연스럽게 포함.
+- 단정형 대신 "가능", "추천", "추정" 같은 비단정 표현 사용.
+- "방문 전 확인" 같은 일반 주의 문구는 생략.
+"""
+
+
+def summarize_analysis(
+    dest_name: str | None,
+    self_status: str,
+    self_label: str | None,
+    self_reason: str | None,
+    top_rec_name: str | None,
+    top_rec_distance_m: int | None,
+    top_rec_walking_minutes: int | None,
+    top_rec_kind: str | None = None,  # 'self' | 'external'
+) -> str | None:
+    """분석 페이지 상단 요약. 키 없거나 호출 실패 시 None."""
+    if not is_enabled():
+        return None
+
+    key = (
+        (dest_name or "").strip().lower(),
+        self_status,
+        (top_rec_name or "").strip().lower(),
+        top_rec_distance_m,
+        top_rec_kind or "",
+    )
+    cached = _ANALYSIS_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    try:
+        from anthropic import Anthropic
+    except ImportError:
+        return None
+
+    lines = [f"장소: {dest_name or '(이름 미상)'}"]
+    lines.append(f"자체 주차: {self_label or self_status}")
+    if self_reason:
+        # reason 은 길 수 있으니 200자로 트림
+        lines.append(f"  근거: {self_reason[:200]}")
+    if top_rec_name:
+        kind = "자체 주차장" if top_rec_kind == "self" else "외부 추천 주차장"
+        bits = [f"추천 주차장({kind}): {top_rec_name}"]
+        if top_rec_distance_m is not None:
+            bits.append(f"{top_rec_distance_m}m")
+        if top_rec_walking_minutes is not None:
+            bits.append(f"도보 약 {top_rec_walking_minutes}분")
+        lines.append(" · ".join(bits))
+    lines.append("")
+    lines.append("위 정보를 한국어 1~2 문장으로 통합 요약. 평문만.")
+    user_prompt = "\n".join(lines)
+
+    try:
+        client = Anthropic(api_key=get_settings().ANTHROPIC_API_KEY)
+        response = client.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=200,
+            system=_ANALYSIS_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("analysis summary call failed: %s", e)
+        return None
+
+    parts: list[str] = []
+    for block in response.content:
+        if getattr(block, "type", None) == "text":
+            parts.append(getattr(block, "text", "") or "")
+    summary = "".join(parts).strip()
+    if not summary:
+        return None
+    _ANALYSIS_CACHE.set(key, summary)
+    return summary
+
+
+def analysis_cache_stats() -> dict:
+    return _ANALYSIS_CACHE.stats()

@@ -215,6 +215,7 @@ class AnalyzeResponse(BaseModel):
     destination: Destination
     self_parking: SelfParking
     summary: AnalyzeSummary
+    analysis_summary: str | None = None  # LLM 통합 요약 (Claude Haiku, 1~2 문장)
     candidates: list[Candidate]
     external_candidates: list[ExternalCandidate] = []
     top_recommendation: TopRecommendation | None = None

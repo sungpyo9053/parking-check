@@ -25,6 +25,7 @@ from ..schemas.parking import (
     TopRecommendation,
 )
 from ..services.external_recommender import pick_top_external
+from ..services.llm_summary import summarize_analysis
 from ..services.parking_fallback import collect_external_candidates
 from ..services.parking_search import latest_realtime_for_lots, nearby_parking_lots
 from ..services.self_parking_web import enrich_self_parking
@@ -337,6 +338,21 @@ def analyze(
         external_candidates=external_candidates,
         top_recommendation=top_rec,
         fallback=fallback,
+        analysis_summary=summarize_analysis(
+            dest_name=dest_name,
+            self_status=self_parking.status,
+            self_label=self_parking.label,
+            self_reason=self_parking.reason,
+            top_rec_name=(top_rec.candidate.name if top_rec else None),
+            top_rec_distance_m=(
+                (top_rec.candidate.walking_route_distance_m or top_rec.candidate.distance_m)
+                if top_rec else None
+            ),
+            top_rec_walking_minutes=(top_rec.candidate.walking_minutes if top_rec else None),
+            top_rec_kind=(
+                "self" if self_parking.status in ("available", "likely") else "external"
+            ),
+        ),
         self_parking_feedback_stats=(
             _self_parking_feedback_stats(db, dest_place.id) if dest_place else None
         ),

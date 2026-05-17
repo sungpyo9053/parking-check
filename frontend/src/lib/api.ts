@@ -78,6 +78,7 @@ export type AnalyzeResponse = {
     any_full_risk: boolean;
     data_quality: "rich" | "partial" | "sparse";
   };
+  analysis_summary: string | null;
   candidates: Candidate[];
   external_candidates: ExternalCandidate[];
   top_recommendation: TopRecommendation | null;
