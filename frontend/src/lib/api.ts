@@ -82,6 +82,10 @@ export type AnalyzeResponse = {
   candidates: Candidate[];
   external_candidates: ExternalCandidate[];
   top_recommendation: TopRecommendation | null;
+  menu: {
+    items: Array<{ name: string; mentions: number; evidence: string | null }>;
+    source: string;
+  } | null;
   fallback: FallbackInfo | null;
   self_parking_feedback_stats: SelfParkingFeedbackStats | null;
   history_for_destination: Array<{

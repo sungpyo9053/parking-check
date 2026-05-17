@@ -17,6 +17,8 @@ from ..schemas.parking import (
     HistoryBlock,
     HistoryForDestination,
     HistoryLastVisit,
+    MenuBlock,
+    MenuItem,
     NearbyItem,
     NearbyResponse,
     RealtimeBlock,
@@ -26,6 +28,7 @@ from ..schemas.parking import (
 )
 from ..services.external_recommender import pick_top_external
 from ..services.llm_summary import summarize_analysis
+from ..services.menu_extractor import extract_menus, is_food_place
 from ..services.parking_fallback import collect_external_candidates
 from ..services.parking_search import latest_realtime_for_lots, nearby_parking_lots
 from ..services.self_parking_web import enrich_self_parking
@@ -324,6 +327,13 @@ def analyze(
             rationale=rationale,
         )
 
+    # --- 메뉴(식당/카페) 추출 ---
+    menu_block: MenuBlock | None = None
+    if dest_place and is_food_place(dest_place.category):
+        menu_items = extract_menus(dest_name, dest_place.category)
+        if menu_items:
+            menu_block = MenuBlock(items=[MenuItem(**m) for m in menu_items])
+
     return AnalyzeResponse(
         destination=Destination(
             place_id=dest_place.id if dest_place else None,
@@ -337,6 +347,7 @@ def analyze(
         candidates=candidates,
         external_candidates=external_candidates,
         top_recommendation=top_rec,
+        menu=menu_block,
         fallback=fallback,
         analysis_summary=summarize_analysis(
             dest_name=dest_name,

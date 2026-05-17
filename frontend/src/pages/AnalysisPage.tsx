@@ -520,6 +520,53 @@ export default function AnalysisPage() {
             </div>
           </div>
 
+          {data.menu && data.menu.items.length > 0 && (
+            <div
+              className="summary-card"
+              style={{
+                background: "#fff7ed",
+                border: "1px solid #fed7aa",
+                marginTop: 8,
+              }}
+            >
+              <div className="row">
+                <span className="label">🍽 인기 메뉴</span>
+                <span className="muted" style={{ fontSize: 11 }}>
+                  네이버 후기 빈도
+                </span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 6,
+                  marginTop: 6,
+                }}
+              >
+                {data.menu.items.map((m) => (
+                  <span
+                    key={m.name}
+                    title={m.evidence || ""}
+                    style={{
+                      background: "#fff",
+                      border: "1px solid #fdba74",
+                      borderRadius: 12,
+                      padding: "3px 9px",
+                      fontSize: 13,
+                      color: "#9a3412",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {m.name}
+                    <span style={{ color: "#c2410c", marginLeft: 4, fontSize: 11 }}>
+                      {m.mentions}회
+                    </span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {(() => {
             // 통일된 '⭐ 추천 주차장' 카드:
             //   - 자체 주차 likely/available → "자체 주차 추천 — [목적지명]"

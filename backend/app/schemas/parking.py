@@ -198,6 +198,17 @@ class SelfParkingFeedbackStats(BaseModel):
     total: int = 0
 
 
+class MenuItem(BaseModel):
+    name: str
+    mentions: int
+    evidence: str | None = None
+
+
+class MenuBlock(BaseModel):
+    items: list[MenuItem] = []
+    source: str = "naver_blog_cafe"
+
+
 class TopRecommendation(BaseModel):
     """자체 주차 불가능/모름일 때, 외부 후보 중 가중치 1위 1개를 강조 표시.
 
@@ -219,6 +230,7 @@ class AnalyzeResponse(BaseModel):
     candidates: list[Candidate]
     external_candidates: list[ExternalCandidate] = []
     top_recommendation: TopRecommendation | None = None
+    menu: MenuBlock | None = None  # 식당/카페일 때 시그니처/추천 메뉴 (Naver 후기 기반)
     fallback: FallbackInfo | None = None
     self_parking_feedback_stats: SelfParkingFeedbackStats | None = None
     history_for_destination: list[HistoryForDestination] = []
