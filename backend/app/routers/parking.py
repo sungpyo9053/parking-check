@@ -21,7 +21,9 @@ from ..schemas.parking import (
     NearbyResponse,
     RealtimeBlock,
     SelfParking,
+    TopRecommendation,
 )
+from ..services.external_recommender import pick_top_external
 from ..services.parking_fallback import collect_external_candidates
 from ..services.parking_search import latest_realtime_for_lots, nearby_parking_lots
 from ..services.self_parking_web import enrich_self_parking
@@ -252,6 +254,33 @@ def analyze(
             "카카오/웹 검색 기반 후보는 실시간 가용 여부를 알 수 없으니 방문 전 확인이 필요합니다."
         )
 
+    # --- 최우선 추천 1개 선정 ---
+    # 자체 주차가 명확히 가능(available)하거나 가능성 높음(likely)이면 그쪽이
+    # 곧 답이므로 별도 외부 추천을 강조하지 않는다 (사용자 결정 방해 방지).
+    top_rec: TopRecommendation | None = None
+    if self_parking.status not in ("available", "likely"):
+        top_cand, top_score, top_reasons = pick_top_external(external_candidates)
+        if top_cand is not None:
+            walk = top_cand.walking_minutes
+            dist = top_cand.distance_m
+            if walk is not None and dist is not None:
+                rationale = (
+                    f"외부 후보 {len(external_candidates)}개 중 거리·개방성·정보 신뢰도를 "
+                    f"종합해 1순위로 추천합니다. 주차 후 목적지까지 직선거리 기준 "
+                    f"도보 약 {walk}분 ({dist}m)."
+                )
+            else:
+                rationale = (
+                    f"외부 후보 {len(external_candidates)}개 중 거리·개방성·정보 신뢰도를 "
+                    f"종합해 1순위로 추천합니다."
+                )
+            top_rec = TopRecommendation(
+                candidate=top_cand,
+                score=top_score,
+                reasons=top_reasons,
+                rationale=rationale,
+            )
+
     return AnalyzeResponse(
         destination=Destination(
             place_id=dest_place.id if dest_place else None,
@@ -264,6 +293,7 @@ def analyze(
         summary=summary,
         candidates=candidates,
         external_candidates=external_candidates,
+        top_recommendation=top_rec,
         fallback=fallback,
         history_for_destination=history_dest_rows,
         disclaimers=disclaimers,

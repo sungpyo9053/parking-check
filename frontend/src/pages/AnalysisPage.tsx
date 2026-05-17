@@ -4,6 +4,7 @@ import { api, AnalyzeResponse, Candidate } from "../lib/api";
 import KakaoMap, { MapMarker } from "../components/KakaoMap";
 import ParkingCard from "../components/ParkingCard";
 import ExternalCard from "../components/ExternalCard";
+import { openKakaoFootRoute } from "../lib/maps";
 
 const SELF_LABEL: Record<string, string> = {
   available: "자체 주차 가능 (DB 매칭)",
@@ -222,6 +223,66 @@ export default function AnalysisPage() {
               <span>{data.summary.data_quality}</span>
             </div>
           </div>
+
+          {data.top_recommendation && (() => {
+            const tr = data.top_recommendation;
+            const c = tr.candidate;
+            const canRoute = c.lat != null && c.lng != null;
+            return (
+              <div className="top-rec-card">
+                <div className="top-rec-head">
+                  <span className="top-rec-badge">⭐ {tr.headline}</span>
+                  <span className="muted" style={{ fontSize: 11 }}>score {tr.score}</span>
+                </div>
+                <div className="top-rec-name">{c.name}</div>
+                <div className="top-rec-meta">
+                  {c.distance_m != null && c.walking_minutes != null && (
+                    <span>
+                      <strong>{c.distance_m}m · 직선거리 기준 도보 약 {c.walking_minutes}분</strong>
+                    </span>
+                  )}
+                  {c.category && <span> · {c.category}</span>}
+                </div>
+                {tr.rationale && (
+                  <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                    {tr.rationale}
+                  </div>
+                )}
+                {tr.reasons.length > 0 && (
+                  <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+                    선정 근거: {tr.reasons.join(" · ")}
+                  </div>
+                )}
+                <div className="actions" style={{ marginTop: 8 }}>
+                  {canRoute && (
+                    <button
+                      className="btn primary"
+                      onClick={() =>
+                        openKakaoFootRoute(
+                          { lat: c.lat!, lng: c.lng!, name: c.name },
+                          {
+                            lat: data.destination.lat,
+                            lng: data.destination.lng,
+                            name: data.destination.name || placeName || "목적지",
+                          }
+                        )
+                      }
+                    >
+                      카카오맵 도보 길찾기
+                    </button>
+                  )}
+                  {c.url && (
+                    <button
+                      className="btn"
+                      onClick={() => window.open(c.url!, "_blank", "noopener,noreferrer")}
+                    >
+                      카카오맵에서 열기
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           {data.fallback && (data.fallback.summary || data.fallback.warnings.length > 0) && (
             <div className="fallback-summary">

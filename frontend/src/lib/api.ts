@@ -78,6 +78,7 @@ export type AnalyzeResponse = {
   };
   candidates: Candidate[];
   external_candidates: ExternalCandidate[];
+  top_recommendation: TopRecommendation | null;
   fallback: FallbackInfo | null;
   history_for_destination: Array<{
     visit_id: number;
@@ -142,6 +143,14 @@ export type ExternalCandidate = {
   usability: UsabilityTier;
   usability_label: string;
   usability_reasons: string[];
+};
+
+export type TopRecommendation = {
+  candidate: ExternalCandidate;
+  score: number;
+  reasons: string[];
+  headline: string;
+  rationale: string | null;
 };
 
 export type FallbackInfo = {

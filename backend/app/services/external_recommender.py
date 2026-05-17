@@ -1,0 +1,144 @@
+"""Kakao/웹 검색 기반 외부 후보 중 '최우선 1개'를 가중치로 선정.
+
+자체 주차가 안 되는 경우 사용자가 18개씩 비교하기 어려우니, 가장 합리적인
+1개를 골라 상단에 '여기 가세요' 로 강조한다.
+
+가중치 (rule-based, LLM 미사용):
+  - usability=usable  : +60
+  - usability=caution : +10
+  - private_restricted: 후보 자체에서 제외 (호출 측에서 거름)
+  - 거리: 0m=40 점, 500m=20 점, 1000m=0 점 선형 감산
+  - category 보너스
+      · "공영주차장" 포함     : +18  (가장 안정적, 보통 저렴)
+      · "노상공영주차장"       : +10  (24시간 가능성/접근성)
+      · "공원주차장"          : +8
+      · "유료" / "민영"        : +5
+      · 알려진 개방 운영사 브랜드: +12
+  - 출처 보너스
+      · source=public_db      : +20 (요금/실시간 정보 있음)
+      · source=kakao_fallback : 0
+      · source=web_search     : -20 (좌표 없거나 정확도 낮음)
+
+동점 시 거리 짧은 쪽 우선.
+"""
+from __future__ import annotations
+
+from ..schemas.parking import Candidate, ExternalCandidate
+
+_OPEN_OPERATOR_BRANDS = (
+    "나이스파크",
+    "AJ파크",
+    "윌슨파킹",
+    "GS파크24",
+    "T맵주차",
+    "카카오T주차",
+    "하이파크",
+)
+
+
+def _distance_score(distance_m: int | None) -> float:
+    if distance_m is None:
+        return 0.0
+    d = min(max(distance_m, 0), 1000)
+    return 40.0 * (1 - d / 1000.0)
+
+
+def _category_bonus(name: str, category: str | None) -> tuple[float, list[str]]:
+    blob = f"{name} {category or ''}"
+    bonus = 0.0
+    reasons: list[str] = []
+    if "공영주차장" in blob:
+        bonus += 18
+        reasons.append("공영주차장")
+    elif "노상공영" in blob:
+        bonus += 10
+        reasons.append("노상공영")
+    elif "공원주차장" in blob:
+        bonus += 8
+        reasons.append("공원주차장")
+    elif "유료" in blob or "민영" in blob:
+        bonus += 5
+        reasons.append("민영/유료 일반 개방")
+    for brand in _OPEN_OPERATOR_BRANDS:
+        if brand in name:
+            bonus += 12
+            reasons.append(f"개방 운영사({brand})")
+            break
+    return bonus, reasons
+
+
+def score_external(c: ExternalCandidate) -> tuple[float, list[str]]:
+    if c.usability == "private_restricted":
+        return -999.0, ["추천 제외 후보"]
+
+    reasons: list[str] = []
+    score = 0.0
+
+    if c.usability == "usable":
+        score += 60
+        reasons.append("일반 개방 후보")
+    elif c.usability == "caution":
+        score += 10
+        reasons.append("사용 가능 여부 확인 필요")
+
+    ds = _distance_score(c.distance_m)
+    if c.distance_m is not None:
+        score += ds
+        reasons.append(f"거리 {c.distance_m}m")
+
+    cb, cr = _category_bonus(c.name, c.category)
+    score += cb
+    reasons.extend(cr)
+
+    if c.source == "public_db":
+        score += 20
+        reasons.append("공공데이터 (요금/실시간 정보 있음)")
+    elif c.source == "web_search":
+        score -= 20
+        reasons.append("웹 검색 기반 (좌표 정확도 낮음)")
+
+    return round(score, 1), reasons
+
+
+def score_db_candidate(c: Candidate) -> tuple[float, list[str]]:
+    """공공데이터 후보. 이미 c.score 가 있지만, ExternalCandidate 와 같은
+    스케일로 비교하려고 별도 산식 사용."""
+    reasons: list[str] = ["공공데이터 기반"]
+    score = 60.0  # usable 기본
+    ds = _distance_score(c.distance_m)
+    score += ds
+    reasons.append(f"거리 {c.distance_m}m")
+    if c.realtime and c.realtime.available_count is not None and c.realtime.total_capacity:
+        ratio = c.realtime.available_count / max(1, c.realtime.total_capacity)
+        if ratio >= 0.3:
+            score += 15
+            reasons.append("실시간 잔여 여유")
+        elif ratio >= 0.1:
+            score += 5
+            reasons.append("실시간 잔여 보통")
+        else:
+            score -= 10
+            reasons.append("실시간 잔여 부족")
+    score += 20  # public_db 보너스
+    return round(score, 1), reasons
+
+
+def pick_top_external(
+    candidates: list[ExternalCandidate],
+) -> tuple[ExternalCandidate | None, float, list[str]]:
+    """후보 리스트에서 최우선 1개. private_restricted 는 자동 제외.
+
+    동점이면 거리 짧은 쪽 우선.
+    """
+    best: tuple[float, int, ExternalCandidate, list[str]] | None = None
+    for c in candidates:
+        if c.usability == "private_restricted":
+            continue
+        s, rs = score_external(c)
+        tie = c.distance_m if c.distance_m is not None else 99999
+        key = (-s, tie)  # 점수 내림차순, 거리 오름차순
+        if best is None or key < (-best[0], best[1]):
+            best = (s, tie, c, rs)
+    if best is None:
+        return None, 0.0, []
+    return best[2], best[0], best[3]

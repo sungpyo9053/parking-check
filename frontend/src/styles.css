@@ -456,6 +456,44 @@ button {
   user-select: none;
 }
 
+/* 최우선 추천 카드 */
+.top-rec-card {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 2px solid #3b82f6;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 12px 0;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+.top-rec-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.top-rec-badge {
+  display: inline-block;
+  background: #1d4ed8;
+  color: #fff;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.top-rec-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #1e3a8a;
+  margin: 4px 0;
+}
+.top-rec-meta {
+  font-size: 13px;
+  color: #1e40af;
+}
+.top-rec-meta strong {
+  color: #1d4ed8;
+}
+
 /* 도보 정보 블록 */
 .walk-block {
   background: #f0f9ff;

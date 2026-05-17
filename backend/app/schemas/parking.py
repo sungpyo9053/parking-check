@@ -185,12 +185,26 @@ class HistoryForDestination(BaseModel):
     memo: str | None
 
 
+class TopRecommendation(BaseModel):
+    """자체 주차 불가능/모름일 때, 외부 후보 중 가중치 1위 1개를 강조 표시.
+
+    self_parking 이 available/likely 이면 None (자체 주차로 안내).
+    """
+
+    candidate: ExternalCandidate
+    score: float
+    reasons: list[str] = []
+    headline: str = "최우선 추천 주차장"
+    rationale: str | None = None
+
+
 class AnalyzeResponse(BaseModel):
     destination: Destination
     self_parking: SelfParking
     summary: AnalyzeSummary
     candidates: list[Candidate]
     external_candidates: list[ExternalCandidate] = []
+    top_recommendation: TopRecommendation | None = None
     fallback: FallbackInfo | None = None
     history_for_destination: list[HistoryForDestination] = []
     disclaimers: list[str] = []
