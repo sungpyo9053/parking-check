@@ -224,14 +224,52 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {data.top_recommendation && (() => {
+          {(() => {
+            // 통일된 '⭐ 추천 주차장' 카드:
+            //   - 자체 주차 likely/available → "자체 주차 추천 — [목적지명]"
+            //   - 그 외 + top_recommendation 있음 → "[외부 주차장명] 주차장 추천"
+            const sp = data.self_parking;
+            const isSelf = sp.status === "available" || sp.status === "likely";
             const tr = data.top_recommendation;
+            const dest = data.destination;
+            const destDisplayName = dest.name || placeName || "목적지";
+
+            if (isSelf) {
+              return (
+                <div className="top-rec-card top-rec-self">
+                  <div className="top-rec-head">
+                    <span className="top-rec-badge">⭐ 자체 주차 추천</span>
+                    {sp.confidence > 0 && (
+                      <span className="muted" style={{ fontSize: 11 }}>
+                        confidence {sp.confidence}
+                      </span>
+                    )}
+                  </div>
+                  <div className="top-rec-name">{destDisplayName} (목적지 자체 주차)</div>
+                  <div className="top-rec-meta">
+                    <strong>주차 후 매장까지 도보 0분</strong>
+                    {sp.label ? ` · ${sp.label}` : ""}
+                  </div>
+                  {sp.reason && (
+                    <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                      {sp.reason}
+                    </div>
+                  )}
+                  {sp.warning && (
+                    <div style={{ fontSize: 12, color: "#b85c00", marginTop: 4 }}>
+                      ⚠ {sp.warning}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            if (!tr) return null;
             const c = tr.candidate;
             const canRoute = c.lat != null && c.lng != null;
             return (
               <div className="top-rec-card">
                 <div className="top-rec-head">
-                  <span className="top-rec-badge">⭐ {tr.headline}</span>
+                  <span className="top-rec-badge">⭐ {c.name} 추천</span>
                   <span className="muted" style={{ fontSize: 11 }}>score {tr.score}</span>
                 </div>
                 <div className="top-rec-name">{c.name}</div>
@@ -261,9 +299,9 @@ export default function AnalysisPage() {
                         openKakaoFootRoute(
                           { lat: c.lat!, lng: c.lng!, name: c.name },
                           {
-                            lat: data.destination.lat,
-                            lng: data.destination.lng,
-                            name: data.destination.name || placeName || "목적지",
+                            lat: dest.lat,
+                            lng: dest.lng,
+                            name: destDisplayName,
                           }
                         )
                       }

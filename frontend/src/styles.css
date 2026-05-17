@@ -493,6 +493,20 @@ button {
 .top-rec-meta strong {
   color: #1d4ed8;
 }
+.top-rec-self {
+  background: linear-gradient(135deg, #f0fdf4 0%, #bbf7d0 100%);
+  border-color: #16a34a;
+}
+.top-rec-self .top-rec-badge {
+  background: #15803d;
+}
+.top-rec-self .top-rec-name {
+  color: #14532d;
+}
+.top-rec-self .top-rec-meta,
+.top-rec-self .top-rec-meta strong {
+  color: #166534;
+}
 
 /* 도보 정보 블록 */
 .walk-block {

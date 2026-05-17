@@ -44,18 +44,27 @@ def _distance_score(distance_m: int | None) -> float:
 
 
 def _category_bonus(name: str, category: str | None) -> tuple[float, list[str]]:
+    """카테고리 + 비용 추정 보너스.
+
+    공영주차장은 보통 저렴하고 누구나 이용 가능 → 가장 큰 보너스.
+    노상공영은 24시간 가능성이 높고 접근성 좋음.
+    민영/유료 타워는 비용은 들지만 안정적.
+    """
     blob = f"{name} {category or ''}"
     bonus = 0.0
     reasons: list[str] = []
     if "공영주차장" in blob:
-        bonus += 18
-        reasons.append("공영주차장")
+        bonus += 20
+        reasons.append("공영주차장(저비용 추정)")
     elif "노상공영" in blob:
-        bonus += 10
-        reasons.append("노상공영")
+        bonus += 12
+        reasons.append("노상공영(접근성)")
     elif "공원주차장" in blob:
         bonus += 8
         reasons.append("공원주차장")
+    elif "주차타워" in blob or "주차빌딩" in blob:
+        bonus += 4
+        reasons.append("주차타워(진출입 복잡도 ↑)")
     elif "유료" in blob or "민영" in blob:
         bonus += 5
         reasons.append("민영/유료 일반 개방")
@@ -65,6 +74,21 @@ def _category_bonus(name: str, category: str | None) -> tuple[float, list[str]]:
             reasons.append(f"개방 운영사({brand})")
             break
     return bonus, reasons
+
+
+def _complexity_penalty(name: str, category: str | None) -> tuple[float, list[str]]:
+    """진출입/구조 복잡도 휴리스틱. 이름/카테고리에 단서가 있을 때만 약한 감점."""
+    blob = f"{name} {category or ''}"
+    penalty = 0.0
+    reasons: list[str] = []
+    if "타워" in blob or "빌딩" in blob or "지하" in blob:
+        if "공영" not in blob:  # 공영은 보통 단순
+            penalty -= 5
+            reasons.append("타워/지하(진출입 복잡)")
+    if "옥상" in blob:
+        penalty -= 3
+        reasons.append("옥상(기상 영향)")
+    return penalty, reasons
 
 
 def score_external(c: ExternalCandidate) -> tuple[float, list[str]]:
@@ -89,6 +113,10 @@ def score_external(c: ExternalCandidate) -> tuple[float, list[str]]:
     cb, cr = _category_bonus(c.name, c.category)
     score += cb
     reasons.extend(cr)
+
+    pp, pr = _complexity_penalty(c.name, c.category)
+    score += pp
+    reasons.extend(pr)
 
     if c.source == "public_db":
         score += 20
