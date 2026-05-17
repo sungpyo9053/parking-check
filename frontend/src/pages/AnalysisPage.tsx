@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, AnalyzeResponse, Candidate, SelfParkingFeedbackStats } from "../lib/api";
+import KakaoMap, { MapMarker } from "../components/KakaoMap";
+import ParkingCard from "../components/ParkingCard";
+import ExternalCard from "../components/ExternalCard";
+import { openKakaoFootRoute } from "../lib/maps";
+import { isFavorite, toggleFavorite } from "../lib/favorites";
+import { sharePage } from "../lib/share";
 
 // 익명 클라이언트 토큰 (피드백 중복 측정용)
 function getUserToken(): string {
@@ -16,10 +22,6 @@ function getUserToken(): string {
     return "anon";
   }
 }
-import KakaoMap, { MapMarker } from "../components/KakaoMap";
-import ParkingCard from "../components/ParkingCard";
-import ExternalCard from "../components/ExternalCard";
-import { openKakaoFootRoute } from "../lib/maps";
 
 const SELF_LABEL: Record<string, string> = {
   available: "자체 주차 가능 (DB 매칭)",
@@ -43,6 +45,59 @@ export default function AnalysisPage() {
   const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [feedbackStats, setFeedbackStats] = useState<SelfParkingFeedbackStats | null>(null);
   const [feedbackJustSent, setFeedbackJustSent] = useState<"yes" | "no" | "unknown" | null>(null);
+  const [fav, setFav] = useState(false);
+  const [shareMsg, setShareMsg] = useState<string | null>(null);
+
+  // 즐겨찾기 상태 동기화 (data 도착 후)
+  useEffect(() => {
+    if (!data) return;
+    setFav(
+      isFavorite(
+        data.destination.place_id ?? null,
+        data.destination.lat,
+        data.destination.lng
+      )
+    );
+  }, [data]);
+
+  function toggleFav() {
+    if (!data) return;
+    const next = toggleFavorite({
+      place_id: data.destination.place_id ?? null,
+      name: data.destination.name || placeName || "목적지",
+      address: data.destination.address ?? null,
+      lat: data.destination.lat,
+      lng: data.destination.lng,
+    });
+    setFav(next);
+  }
+
+  async function doShare() {
+    if (!data) return;
+    const name = data.destination.name || placeName || "목적지";
+    const status = data.self_parking.label || data.self_parking.status;
+    const top = data.top_recommendation?.candidate;
+    const bits: string[] = [`자체 주차: ${status}`];
+    if (top) {
+      bits.push(
+        `추천: ${top.name}${
+          top.walking_minutes != null ? ` (도보 약 ${top.walking_minutes}분)` : ""
+        }`
+      );
+    }
+    const url = `${window.location.origin}${window.location.pathname}${window.location.search}`;
+    const res = await sharePage({
+      title: `주차될까 - ${name}`,
+      text: bits.join(" · "),
+      url,
+    });
+    if (res.kind === "copied") setShareMsg("링크 복사됨");
+    else if (res.kind === "error") setShareMsg(res.message);
+    else setShareMsg(null);
+    if (res.kind === "copied" || res.kind === "error") {
+      setTimeout(() => setShareMsg(null), 2500);
+    }
+  }
 
   async function sendFeedback(answer: "yes" | "no" | "unknown") {
     if (!data?.destination.place_id) return;
@@ -197,7 +252,52 @@ export default function AnalysisPage() {
 
   return (
     <div>
-      <h1 className="h1">{placeName || data?.destination.name || "분석"}</h1>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+        <h1 className="h1" style={{ margin: 0 }}>
+          {placeName || data?.destination.name || "분석"}
+        </h1>
+        {data && (
+          <>
+            <button
+              type="button"
+              onClick={toggleFav}
+              aria-label={fav ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+              style={{
+                background: "transparent",
+                border: "none",
+                fontSize: 22,
+                color: fav ? "#f59e0b" : "#9ca3af",
+                cursor: "pointer",
+                padding: 0,
+                lineHeight: 1,
+              }}
+            >
+              {fav ? "★" : "☆"}
+            </button>
+            <button
+              type="button"
+              onClick={doShare}
+              aria-label="공유"
+              style={{
+                background: "transparent",
+                border: "none",
+                fontSize: 18,
+                color: "#0b6cff",
+                cursor: "pointer",
+                padding: 0,
+                lineHeight: 1,
+              }}
+            >
+              📤
+            </button>
+            {shareMsg && (
+              <span className="muted" style={{ fontSize: 11 }}>
+                {shareMsg}
+              </span>
+            )}
+          </>
+        )}
+      </div>
       <p className="tagline">{data?.destination.address}</p>
 
       <div className="search-box" style={{ marginTop: 0 }}>
