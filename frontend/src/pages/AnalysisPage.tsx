@@ -92,11 +92,16 @@ export default function AnalysisPage() {
 
   const markers = useMemo<MapMarker[]>(() => {
     if (!data) return [];
-    // private_restricted (추천 제외) 는 지도에서 제외.
     const externalForMap = (data.external_candidates || []).filter(
       e => e.lat != null && e.lng != null && e.usability !== "private_restricted"
     );
-    return [
+    const tr = data.top_recommendation;
+    const recLat = tr?.candidate.lat;
+    const recLng = tr?.candidate.lng;
+    const isSameMarker = (lat: number | null, lng: number | null) =>
+      recLat != null && recLng != null && lat === recLat && lng === recLng;
+
+    const out: MapMarker[] = [
       {
         id: "dest",
         lat: data.destination.lat,
@@ -104,35 +109,61 @@ export default function AnalysisPage() {
         label: data.destination.name || placeName || "목적지",
         kind: "destination" as const,
       },
-      ...data.candidates.map<MapMarker>(c => ({
-        id: String(c.id),
-        lat: c.lat,
-        lng: c.lng,
-        label: c.name,
-        kind: "parking" as const,
-        detail: {
-          name: c.name,
-          usability: "usable",
-          usabilityLabel: "추천 가능",
-          distanceM: c.distance_m,
-          walkingMinutes: c.walk_minutes,
-        },
-      })),
-      ...externalForMap.map<MapMarker>((e, i) => ({
-        id: `ext-${i}`,
-        lat: e.lat as number,
-        lng: e.lng as number,
-        label: e.name,
-        kind: "parking" as const,
-        detail: {
-          name: e.name,
-          usability: e.usability,
-          usabilityLabel: e.usability_label,
-          distanceM: e.distance_m,
-          walkingMinutes: e.walking_minutes,
-        },
-      })),
     ];
+
+    // 추천 마커는 가장 위에 별도로 노란 ⭐ 강조
+    if (tr && recLat != null && recLng != null) {
+      out.push({
+        id: "top-rec",
+        lat: recLat,
+        lng: recLng,
+        label: tr.candidate.name,
+        kind: "recommended" as const,
+        detail: {
+          name: tr.candidate.name,
+          usability: "usable",
+          usabilityLabel: "⭐ 최우선 추천",
+          distanceM: tr.candidate.walking_route_distance_m ?? tr.candidate.distance_m,
+          walkingMinutes: tr.candidate.walking_minutes,
+        },
+      });
+    }
+
+    out.push(
+      ...data.candidates
+        .filter(c => !isSameMarker(c.lat, c.lng))
+        .map<MapMarker>(c => ({
+          id: String(c.id),
+          lat: c.lat,
+          lng: c.lng,
+          label: c.name,
+          kind: "parking" as const,
+          detail: {
+            name: c.name,
+            usability: "usable",
+            usabilityLabel: "추천 가능",
+            distanceM: c.walking_route_distance_m ?? c.distance_m,
+            walkingMinutes: c.walk_minutes,
+          },
+        })),
+      ...externalForMap
+        .filter(e => !isSameMarker(e.lat, e.lng))
+        .map<MapMarker>((e, i) => ({
+          id: `ext-${i}`,
+          lat: e.lat as number,
+          lng: e.lng as number,
+          label: e.name,
+          kind: "parking" as const,
+          detail: {
+            name: e.name,
+            usability: e.usability,
+            usabilityLabel: e.usability_label,
+            distanceM: e.walking_route_distance_m ?? e.distance_m,
+            walkingMinutes: e.walking_minutes,
+          },
+        }))
+    );
+    return out;
   }, [data, placeName]);
 
   function startVisit(c: Candidate) {

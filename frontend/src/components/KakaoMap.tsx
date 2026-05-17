@@ -15,7 +15,7 @@ export type MapMarker = {
   lat: number;
   lng: number;
   label?: string;
-  kind?: "destination" | "parking" | "hot" | "current";
+  kind?: "destination" | "parking" | "hot" | "current" | "recommended";
   detail?: MapMarkerDetail;
 };
 
@@ -124,12 +124,21 @@ export default function KakaoMap({
       const isDest = m.kind === "destination";
       const isHot = m.kind === "hot";
       const isCurrent = m.kind === "current";
+      const isRec = m.kind === "recommended";
 
       const u = m.detail?.usability;
       const c = (u && USABILITY_COLOR[u]) || USABILITY_COLOR.usable;
 
       let pinHtml: string;
-      if (isDest) {
+      if (isRec) {
+        pinHtml = `<div data-marker-id="${escapeHtml(m.id)}" style="display:flex;align-items:center;gap:4px;transform:translate(-50%,-100%);cursor:pointer;">
+             <div style="background:#fef3c7;color:#92400e;border:2px solid #f59e0b;
+                         border-radius:8px;padding:4px 10px;font-size:12px;font-weight:800;
+                         box-shadow:0 2px 6px rgba(245,158,11,.35);white-space:nowrap;">
+               ⭐ 추천${m.label ? ` · ${escapeHtml(m.label)}` : ""}
+             </div>
+           </div>`;
+      } else if (isDest) {
         pinHtml = `<div style="display:flex;align-items:center;gap:6px;transform:translate(-50%,-100%);">
              <div style="background:#0b6cff;color:#fff;border-radius:999px;padding:6px 10px;
                          font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.18);
@@ -164,13 +173,13 @@ export default function KakaoMap({
         content: pinHtml,
         yAnchor: 1,
         xAnchor: 0.5,
-        zIndex: isDest ? 5 : 3,
+        zIndex: isRec ? 7 : isDest ? 5 : 3,
       });
       overlay.setMap(mapRef.current);
       overlaysRef.current.push(overlay);
 
-      // 주차장 마커 클릭 → CustomOverlay 팝업
-      if (!isDest && m.detail) {
+      // 주차장 마커 클릭 → CustomOverlay 팝업 (current/dest 제외)
+      if (!isDest && !isCurrent && m.detail) {
         // CustomOverlay 의 content 가 DOM 일 때 직접 이벤트 바인딩 가능
         // 여기서는 HTML 문자열이므로 inline onclick + 전역 핸들러 사용
         const el = (overlay as any).getContent
