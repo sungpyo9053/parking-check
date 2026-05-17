@@ -69,28 +69,47 @@ NEGATIVE_KEYWORDS: dict[str, int] = {
     "주차불가": -50,
     "주차장 없음": -45,
     "주차장이 없": -40,
+    "전용 주차장은 없": -45,
+    "전용주차장은 없": -45,
+    "전용 주차장 없": -45,
+    "전용주차장 없": -45,
+    "전용 주차장은 따로 없": -50,
+    "전용주차장은 따로 없": -50,
+    "따로 없": -25,   # '전용주차장 따로 없' / '주차장 따로 없'
     "주차 안 됨": -35,
     "주차안됨": -35,
     "주차 어려": -30,
     "주차 힘들": -30,
     "주차 힘듦": -30,
-    # 인근 ~ 이용 = 자체 X (사용자 요구)
+    # 인근/근처 + 공영 (자체 X 사용자 요구)
     "인근 공영주차장 이용": -45,
     "인근 공영주차장": -35,
     "근처 공영주차장 이용": -45,
     "근처 공영주차장": -35,
     "주변 공영주차장": -30,
-    "인근 민영주차장": -35,
-    "인근 유료주차장": -30,
+    # 인근/근처 + 유료/민영 (전포동 지즈 같은 케이스 — 같은 강도여야)
+    "인근 민영주차장": -45,
+    "인근 유료주차장": -45,
+    "근처 민영주차장": -45,
+    "근처 유료주차장 이용": -50,
+    "근처 유료주차장": -45,
+    "근처 유료 주차장 이용": -50,
+    "근처 유료 주차장": -45,
+    "주변 유료주차장": -35,
+    "주변 민영주차장": -35,
     "인근 주차장 이용": -40,
     "근처 주차장 이용": -40,
+    "주변 주차장 이용": -35,
+    "근처 노상 공영": -45,  # '도보 4분 거리의 노상 공영 주차장 이용...'
+    "도보 ": -10,           # '도보 N분 거리의 X 주차장 이용' 패턴 약한 negative
     # 외부 주차장 추천 표현
     "공영주차장 추천": -40,
     "주차장 추천": -25,
     "주차장 이용 권장": -35,
-    # 정량적인 외부 주차 안내 (예: "1시간 1,000원 할인" 같이 인근 제휴)
+    # 정량적인 외부 주차 안내
     "공영 이용": -25,
     "민영 이용": -25,
+    "유료 이용": -25,
 }
 
 # 'likely' / 'uncertain' 격상 임계
@@ -191,12 +210,23 @@ def _name_or_addr_in_text(text: str, dest_name: str | None, dest_addr: str | Non
     return False
 
 
+import re as _re
+
+# positive 키워드 직후 12자 이내에 부정 패턴이 오면 그 매칭을 무효화
+# 예: "전용 주차장은 따로 없었지만", "전용주차 안 됨", "주차장 이용 어렵"
+_NEGATION_AFTER = _re.compile(
+    r"(없었|없습|없어|없고|안\s*돼|안\s*됨|불가능|불가|어렵|힘들|힘듭|어려워|불가합)"
+)
+
+
 def _score_text(text: str) -> tuple[int, list[str]]:
     """텍스트에 등장한 키워드 가중치 합계와 매칭된 키워드 목록.
 
-    같은 텍스트에 negative 시그널이 있으면 positive 의 기여를 절반으로 깎는다.
-    (예: "인근 공영주차장 이용 가능 ... 건물에도 주차 가능" 같이 인근 안내
-    문맥이 있으면 '주차 가능' 같은 약한 positive 는 자체 주차 근거로 보기 어려움.)
+    부정 처리:
+      1) positive 키워드 직후 12자 안에 부정 패턴('없', '안 됨', '불가' 등)이
+         오면 그 positive 매칭은 무효 ("전용 주차장은 따로 없었지만" 같은 케이스)
+      2) 같은 텍스트에 negative ≤ -25 가 있으면 남은 positive 도 완전 무효화
+         (인근 안내 문맥에 묻힌 거짓 positive 차단)
     """
     if not text:
         return 0, []
@@ -204,19 +234,26 @@ def _score_text(text: str) -> tuple[int, list[str]]:
     neg_score = 0
     matched: list[str] = []
     t = text.lower()
+
     for kw, weight in POSITIVE_KEYWORDS.items():
-        if kw.lower() in t:
-            pos_score += weight
-            matched.append(kw)
+        kw_lower = kw.lower()
+        idx = t.find(kw_lower)
+        if idx < 0:
+            continue
+        # 키워드 직후 12자 윈도우에 부정 단어가 있으면 무효
+        tail = t[idx + len(kw_lower) : idx + len(kw_lower) + 12]
+        if _NEGATION_AFTER.search(tail):
+            matched.append(f"{kw}(부정문 무효)")
+            continue
+        pos_score += weight
+        matched.append(kw)
+
     for kw, weight in NEGATIVE_KEYWORDS.items():
         if kw.lower() in t:
-            neg_score += weight  # weight is negative
+            neg_score += weight
             matched.append(kw)
 
     if neg_score <= -25 and pos_score > 0:
-        # 인근/근처 공영 안내가 강하게 동반되면 같은 snippet 의 positive 신호는
-        # 사실상 인근 안내의 일부 — substring 매칭으로 잡힌 거짓 positive 가 많음.
-        # 완전히 무효화해서 negative 만 반영한다.
         pos_score = 0
 
     return pos_score + neg_score, matched
