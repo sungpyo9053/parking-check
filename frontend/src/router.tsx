@@ -15,7 +15,7 @@ export const router = createBrowserRouter([
       { path: "places", element: <PlaceSelectPage /> },
       { path: "analyze", element: <AnalysisPage /> },
       { path: "visits/new", element: <VisitLogPage /> },
-      { path: "visits", element: <VisitListPage /> }
-    ]
-  }
+      { path: "visits", element: <VisitListPage /> },
+    ],
+  },
 ]);

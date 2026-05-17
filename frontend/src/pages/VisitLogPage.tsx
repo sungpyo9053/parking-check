@@ -9,7 +9,7 @@ const RESULTS: Array<{ value: string; label: string }> = [
   { value: "entrance_lost", label: "입구 못 찾음" },
   { value: "fee_mismatch", label: "요금 정보 틀림" },
   { value: "closed", label: "운영 안 함" },
-  { value: "etc", label: "기타" }
+  { value: "etc", label: "기타" },
 ];
 
 export default function VisitLogPage() {
@@ -31,12 +31,14 @@ export default function VisitLogPage() {
     if (!id) return;
     api
       .listVisits()
-      .then(res => {
-        const v = res.items.find(v => v.id === id) || null;
+      .then((res) => {
+        const v = res.items.find((v) => v.id === id) || null;
         setVisit(v);
         if (v?.actual_result) {
           setResult(v.actual_result);
-          setWait(v.actual_wait_minutes != null ? String(v.actual_wait_minutes) : "");
+          setWait(
+            v.actual_wait_minutes != null ? String(v.actual_wait_minutes) : "",
+          );
           setFee(v.actual_fee != null ? String(v.actual_fee) : "");
           setEntrance(v.entrance_difficulty?.toString() || "3");
           setWalking(v.walking_difficulty?.toString() || "3");
@@ -44,7 +46,7 @@ export default function VisitLogPage() {
           setMemo(v.memo || "");
         }
       })
-      .catch(e => setError(e.message));
+      .catch((e) => setError(e.message));
   }, [id]);
 
   function submit(e: FormEvent) {
@@ -58,10 +60,10 @@ export default function VisitLogPage() {
         entrance_difficulty: Number(entrance),
         walking_difficulty: Number(walking),
         perceived_congestion: Number(perceived),
-        memo: memo || null
+        memo: memo || null,
       } as any)
       .then(() => navigate("/visits"))
-      .catch(e => setError(e.message));
+      .catch((e) => setError(e.message));
   }
 
   return (
@@ -98,8 +100,11 @@ export default function VisitLogPage() {
           <form onSubmit={submit}>
             <div className="form-row">
               <label>실제 결과</label>
-              <select value={result} onChange={e => setResult(e.target.value)}>
-                {RESULTS.map(r => (
+              <select
+                value={result}
+                onChange={(e) => setResult(e.target.value)}
+              >
+                {RESULTS.map((r) => (
                   <option key={r.value} value={r.value}>
                     {r.label}
                   </option>
@@ -111,7 +116,7 @@ export default function VisitLogPage() {
               <input
                 inputMode="numeric"
                 value={wait}
-                onChange={e => setWait(e.target.value)}
+                onChange={(e) => setWait(e.target.value)}
               />
             </div>
             <div className="form-row">
@@ -119,7 +124,7 @@ export default function VisitLogPage() {
               <input
                 inputMode="numeric"
                 value={fee}
-                onChange={e => setFee(e.target.value)}
+                onChange={(e) => setFee(e.target.value)}
               />
             </div>
             <div className="form-row">
@@ -129,7 +134,7 @@ export default function VisitLogPage() {
                 min={1}
                 max={5}
                 value={entrance}
-                onChange={e => setEntrance(e.target.value)}
+                onChange={(e) => setEntrance(e.target.value)}
               />
               <span className="muted">{entrance}</span>
             </div>
@@ -140,7 +145,7 @@ export default function VisitLogPage() {
                 min={1}
                 max={5}
                 value={walking}
-                onChange={e => setWalking(e.target.value)}
+                onChange={(e) => setWalking(e.target.value)}
               />
               <span className="muted">{walking}</span>
             </div>
@@ -151,15 +156,22 @@ export default function VisitLogPage() {
                 min={1}
                 max={5}
                 value={perceived}
-                onChange={e => setPerceived(e.target.value)}
+                onChange={(e) => setPerceived(e.target.value)}
               />
               <span className="muted">{perceived}</span>
             </div>
             <div className="form-row">
               <label>메모</label>
-              <textarea value={memo} onChange={e => setMemo(e.target.value)} />
+              <textarea
+                value={memo}
+                onChange={(e) => setMemo(e.target.value)}
+              />
             </div>
-            <button className="btn primary" type="submit" style={{ width: "100%" }}>
+            <button
+              className="btn primary"
+              type="submit"
+              style={{ width: "100%" }}
+            >
               저장
             </button>
           </form>

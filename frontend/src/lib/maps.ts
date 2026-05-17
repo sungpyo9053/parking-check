@@ -30,7 +30,7 @@ export function kakaoMapRouteSchemeUrl(from: LatLng, to: LatLng): string {
 /** 카카오맵 길찾기 웹 URL (도보 모드 강제는 보장 안 됨) */
 export function kakaoMapRouteWebUrl(
   from: LatLng & { name?: string },
-  to: LatLng & { name?: string }
+  to: LatLng & { name?: string },
 ): string {
   const params = new URLSearchParams({
     sName: from.name || "출발",
@@ -61,7 +61,7 @@ export function kakaoMapSearchUrl(query: string, center?: LatLng): string {
  */
 export function openKakaoFootRoute(
   from: LatLng & { name?: string },
-  to: LatLng & { name?: string }
+  to: LatLng & { name?: string },
 ): void {
   const web = kakaoMapRouteWebUrl(from, to);
   if (isMobile()) {

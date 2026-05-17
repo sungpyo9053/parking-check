@@ -19,14 +19,18 @@ export function useRecentSearches() {
     try {
       const raw = localStorage.getItem(KEY);
       if (raw) setItems(JSON.parse(raw));
-    } catch { /* noop */ }
+    } catch {
+      /* noop */
+    }
   }, []);
 
   const push = useCallback((item: Omit<RecentSearch, "ts">) => {
-    setItems(prev => {
+    setItems((prev) => {
       const next = [
         { ...item, ts: Date.now() },
-        ...prev.filter(p => !(p.place_id != null && p.place_id === item.place_id))
+        ...prev.filter(
+          (p) => !(p.place_id != null && p.place_id === item.place_id),
+        ),
       ].slice(0, MAX);
       localStorage.setItem(KEY, JSON.stringify(next));
       return next;

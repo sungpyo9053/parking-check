@@ -8,6 +8,8 @@ export type MapMarkerDetail = {
   usabilityLabel?: string;
   distanceM?: number | null;
   walkingMinutes?: number | null;
+  /** "osrm" 이면 실 도보 경로, "haversine" 이면 직선거리 기준. */
+  routeSource?: "osrm" | "haversine" | null;
 };
 
 export type MapMarker = {
@@ -31,16 +33,21 @@ type Props = {
   className?: string;
 };
 
-const USABILITY_COLOR: Record<string, { bg: string; fg: string; bd: string }> = {
-  usable: { bg: "#bbf7d0", fg: "#14532d", bd: "#16a34a" },
-  caution: { bg: "#fed7aa", fg: "#9a3412", bd: "#ea580c" },
-  private_restricted: { bg: "#fecaca", fg: "#7f1d1d", bd: "#dc2626" },
-};
+const USABILITY_COLOR: Record<string, { bg: string; fg: string; bd: string }> =
+  {
+    usable: { bg: "#bbf7d0", fg: "#14532d", bd: "#16a34a" },
+    caution: { bg: "#fed7aa", fg: "#9a3412", bd: "#ea580c" },
+    private_restricted: { bg: "#fecaca", fg: "#7f1d1d", bd: "#dc2626" },
+  };
 
 // 전역 핸들러 — 팝업 HTML 안의 버튼/링크가 호출. window 로 노출해야 inline onclick 동작.
 declare global {
   interface Window {
-    __pkOpenFootRoute?: (fromLat: number, fromLng: number, fromName: string) => void;
+    __pkOpenFootRoute?: (
+      fromLat: number,
+      fromLng: number,
+      fromName: string,
+    ) => void;
     __pkClosePopup?: () => void;
   }
 }
@@ -75,7 +82,7 @@ export default function KakaoMap({
         });
         setMapReady(true);
       })
-      .catch(err => {
+      .catch((err) => {
         if (!ref.current) return;
         ref.current.innerHTML = `<div style="padding:12px;color:#dc2626">${err.message}</div>`;
       });
@@ -104,7 +111,11 @@ export default function KakaoMap({
       if (destinationLat == null || destinationLng == null) return;
       openKakaoFootRoute(
         { lat: fromLat, lng: fromLng, name: fromName },
-        { lat: destinationLat, lng: destinationLng, name: destinationName || "목적지" }
+        {
+          lat: destinationLat,
+          lng: destinationLng,
+          name: destinationName || "목적지",
+        },
       );
     };
     return () => {
@@ -117,7 +128,7 @@ export default function KakaoMap({
   useEffect(() => {
     const k = window.kakao;
     if (!mapReady || !mapRef.current || !k) return;
-    overlaysRef.current.forEach(o => o.setMap(null));
+    overlaysRef.current.forEach((o) => o.setMap(null));
     overlaysRef.current = [];
     if (popupRef.current) {
       popupRef.current.setMap(null);
@@ -127,7 +138,7 @@ export default function KakaoMap({
     const bounds = new k.maps.LatLngBounds();
     let added = 0;
 
-    markers.forEach(m => {
+    markers.forEach((m) => {
       const pos = new k.maps.LatLng(m.lat, m.lng);
       const isDest = m.kind === "destination";
       const isHot = m.kind === "hot";
@@ -137,20 +148,22 @@ export default function KakaoMap({
       const u = m.detail?.usability;
       const c = (u && USABILITY_COLOR[u]) || USABILITY_COLOR.usable;
 
+      // 마커 라벨 — 짧고 한눈에 (목적지/P1/P2/...)
       let pinHtml: string;
       if (isRec) {
+        const lbl = m.label || "P1";
         pinHtml = `<div data-marker-id="${escapeHtml(m.id)}" style="display:flex;align-items:center;gap:4px;transform:translate(-50%,-100%);cursor:pointer;">
              <div style="background:#fef3c7;color:#92400e;border:2px solid #f59e0b;
-                         border-radius:8px;padding:4px 10px;font-size:12px;font-weight:800;
+                         border-radius:999px;padding:4px 10px;font-size:12px;font-weight:800;
                          box-shadow:0 2px 6px rgba(245,158,11,.35);white-space:nowrap;">
-               ⭐ 추천${m.label ? ` · ${escapeHtml(m.label)}` : ""}
+               ⭐ ${escapeHtml(lbl)}
              </div>
            </div>`;
       } else if (isDest) {
         pinHtml = `<div style="display:flex;align-items:center;gap:6px;transform:translate(-50%,-100%);">
-             <div style="background:#0b6cff;color:#fff;border-radius:999px;padding:6px 10px;
+             <div style="background:#0b6cff;color:#fff;border-radius:999px;padding:5px 10px;
                          font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.18);
-                         border:2px solid #fff;">📍 목적지${m.label ? ` · ${escapeHtml(m.label)}` : ""}</div>
+                         border:2px solid #fff;">📍 목적지</div>
            </div>`;
       } else if (isCurrent) {
         pinHtml = `<div style="display:flex;align-items:center;gap:6px;transform:translate(-50%,-100%);">
@@ -167,11 +180,12 @@ export default function KakaoMap({
              </div>
            </div>`;
       } else {
+        const lbl = m.label || "P";
         pinHtml = `<div data-marker-id="${escapeHtml(m.id)}" style="display:flex;align-items:center;gap:4px;transform:translate(-50%,-100%);cursor:pointer;">
-             <div style="background:${c.bg};color:${c.fg};border:2px solid ${c.bd};border-radius:6px;
-                         padding:2px 6px;font-size:11px;font-weight:800;
+             <div style="background:${c.bg};color:${c.fg};border:2px solid ${c.bd};border-radius:999px;
+                         padding:3px 9px;font-size:12px;font-weight:800;
                          box-shadow:0 1px 3px rgba(0,0,0,.12);white-space:nowrap;">
-               P${m.label ? ` ${escapeHtml(m.label)}` : ""}
+               ${escapeHtml(lbl)}
              </div>
            </div>`;
       }
@@ -223,12 +237,15 @@ export default function KakaoMap({
       const d = marker.detail!;
       const u = d.usability || "usable";
       const cl = USABILITY_COLOR[u] || USABILITY_COLOR.usable;
+      // 도보 기준은 routeSource 에 따라 정확히 구분 (실 도보 경로 / 직선거리)
+      const sourceLabel =
+        d.routeSource === "osrm" ? "실 도보 경로" : "직선거리 기준";
       const distText =
         d.distanceM != null && d.walkingMinutes != null
-          ? `${d.distanceM}m · 직선거리 기준 도보 약 ${d.walkingMinutes}분`
+          ? `${d.distanceM}m · ${sourceLabel} 도보 약 ${d.walkingMinutes}분`
           : d.distanceM != null
-          ? `${d.distanceM}m`
-          : "거리 정보 없음";
+            ? `${d.distanceM}m`
+            : "거리 정보 없음";
 
       const canRoute = destinationLat != null && destinationLng != null;
       const popupHtml = `
@@ -276,7 +293,9 @@ export default function KakaoMap({
     }
   }, [markers, destinationLat, destinationLng, destinationName, mapReady]);
 
-  return <div ref={ref} className={`map-wrap${className ? ` ${className}` : ""}`} />;
+  return (
+    <div ref={ref} className={`map-wrap${className ? ` ${className}` : ""}`} />
+  );
 }
 
 function escapeHtml(s: string): string {

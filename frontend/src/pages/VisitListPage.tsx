@@ -9,7 +9,7 @@ const RESULT_LABEL: Record<string, string> = {
   entrance_lost: "입구 못 찾음",
   fee_mismatch: "요금 오류",
   closed: "운영 안 함",
-  etc: "기타"
+  etc: "기타",
 };
 
 export default function VisitListPage() {
@@ -19,8 +19,8 @@ export default function VisitListPage() {
   useEffect(() => {
     api
       .listVisits()
-      .then(res => setItems(res.items))
-      .catch(e => setError(e.message));
+      .then((res) => setItems(res.items))
+      .catch((e) => setError(e.message));
   }, []);
 
   return (
@@ -32,16 +32,19 @@ export default function VisitListPage() {
         <p className="muted">아직 방문 기록이 없습니다.</p>
       )}
       <ul className="list">
-        {items?.map(v => (
+        {items?.map((v) => (
           <li key={v.id} className="list-item clickable">
             <Link to={`/visits/new?id=${v.id}`} style={{ display: "block" }}>
               <span className="title">
-                {v.destination_name || "(이름 없음)"} → {v.selected_parking_name || "-"}
+                {v.destination_name || "(이름 없음)"} →{" "}
+                {v.selected_parking_name || "-"}
               </span>
               <span className="sub">
-                {new Date(v.searched_at).toLocaleString("ko-KR")} ·
-                예측 {v.predicted_status || "?"} · 결과{" "}
-                {v.actual_result ? RESULT_LABEL[v.actual_result] || v.actual_result : "미입력"}
+                {new Date(v.searched_at).toLocaleString("ko-KR")} · 예측{" "}
+                {v.predicted_status || "?"} · 결과{" "}
+                {v.actual_result
+                  ? RESULT_LABEL[v.actual_result] || v.actual_result
+                  : "미입력"}
               </span>
               {v.memo && <span className="sub">메모: {v.memo}</span>}
             </Link>

@@ -4,14 +4,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const url = path.startsWith("http") ? path : `${BASE}${path}`;
   const res = await fetch(url, {
     headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
-    ...init
+    ...init,
   });
   if (!res.ok) {
     let detail = `${res.status}`;
     try {
       const body = await res.json();
       if (body?.detail) detail = body.detail;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     throw new Error(detail);
   }
   return res.json() as Promise<T>;
@@ -37,7 +39,13 @@ export type RealtimeBlock = {
   stale_seconds: number | null;
 };
 
-export type Congestion = "easy" | "moderate" | "busy" | "risky" | "full" | "unknown";
+export type Congestion =
+  | "easy"
+  | "moderate"
+  | "busy"
+  | "risky"
+  | "full"
+  | "unknown";
 
 export type Candidate = {
   id: number;
@@ -217,10 +225,15 @@ export type Visit = {
 export const api = {
   searchPlaces: (query: string, size = 10) =>
     request<{ items: PlaceItem[] }>(
-      `/api/places/search?query=${encodeURIComponent(query)}&size=${size}`
+      `/api/places/search?query=${encodeURIComponent(query)}&size=${size}`,
     ),
 
-  analyze: (params: { place_id?: number; lat?: number; lng?: number; radius?: number }) => {
+  analyze: (params: {
+    place_id?: number;
+    lat?: number;
+    lng?: number;
+    radius?: number;
+  }) => {
     const q = new URLSearchParams();
     if (params.place_id != null) q.set("place_id", String(params.place_id));
     if (params.lat != null) q.set("lat", String(params.lat));
@@ -230,39 +243,54 @@ export const api = {
   },
 
   createVisit: (body: Partial<Visit>) =>
-    request<Visit>("/api/visits", { method: "POST", body: JSON.stringify(body) }),
+    request<Visit>("/api/visits", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   updateVisitResult: (id: number, body: Partial<Visit>) =>
     request<Visit>(`/api/visits/${id}/result`, {
       method: "PATCH",
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     }),
 
   listVisits: () => request<{ count: number; items: Visit[] }>("/api/visits"),
 
   visitsByPlace: (place_id: number) =>
     request<{ count: number; items: Visit[] }>(
-      `/api/visits/by-place?place_id=${place_id}`
+      `/api/visits/by-place?place_id=${place_id}`,
     ),
 
   visitsByParkingLot: (parking_lot_id: number) =>
     request<{ count: number; items: Visit[] }>(
-      `/api/visits/by-parking-lot?parking_lot_id=${parking_lot_id}`
+      `/api/visits/by-parking-lot?parking_lot_id=${parking_lot_id}`,
     ),
 
   submitSelfParkingFeedback: (
     place_id: number,
-    body: { answer: "yes" | "no" | "unknown"; note?: string; user_token?: string }
+    body: {
+      answer: "yes" | "no" | "unknown";
+      note?: string;
+      user_token?: string;
+    },
   ) =>
-    request<{ id: number; place_id: number | null; answer: string; created_at: string }>(
-      `/api/places/${place_id}/self-parking-feedback`,
-      { method: "POST", body: JSON.stringify(body) }
-    ),
+    request<{
+      id: number;
+      place_id: number | null;
+      answer: string;
+      created_at: string;
+    }>(`/api/places/${place_id}/self-parking-feedback`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   selfParkingFeedbackSummary: (place_id: number) =>
-    request<SelfParkingFeedbackStats & { last_answer: string | null; last_at: string | null }>(
-      `/api/places/${place_id}/self-parking-feedback/summary`
-    ),
+    request<
+      SelfParkingFeedbackStats & {
+        last_answer: string | null;
+        last_at: string | null;
+      }
+    >(`/api/places/${place_id}/self-parking-feedback/summary`),
 
   createFavGroup: (name?: string) =>
     request<FavoriteGroupOut>(`/api/favorites/groups`, {
@@ -271,21 +299,23 @@ export const api = {
     }),
 
   getFavGroup: (code: string) =>
-    request<FavoriteGroupDetail>(`/api/favorites/groups/${encodeURIComponent(code)}`),
+    request<FavoriteGroupDetail>(
+      `/api/favorites/groups/${encodeURIComponent(code)}`,
+    ),
 
   addFavItem: (code: string, item: FavoriteItemCreate) =>
     request<FavoriteItemOut>(
       `/api/favorites/groups/${encodeURIComponent(code)}/items`,
-      { method: "POST", body: JSON.stringify(item) }
+      { method: "POST", body: JSON.stringify(item) },
     ),
 
   removeFavItem: (code: string, itemId: number) =>
     fetch(
       `${import.meta.env.VITE_BACKEND_BASE_URL || ""}/api/favorites/groups/${encodeURIComponent(
-        code
+        code,
       )}/items/${itemId}`,
-      { method: "DELETE" }
-    ).then(r => {
+      { method: "DELETE" },
+    ).then((r) => {
       if (!r.ok) throw new Error(`${r.status}`);
     }),
 
@@ -304,7 +334,7 @@ export const api = {
       radius: String(params.radius ?? 1500),
     });
     return request<DiscoverHotResponse>(`/api/discover/hot?${q.toString()}`);
-  }
+  },
 };
 
 export type HotPlaceItem = {

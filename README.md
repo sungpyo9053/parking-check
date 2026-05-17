@@ -136,13 +136,13 @@
 
 ## Screenshots
 
-> 실제 이미지는 `docs/images/` 경로에 추가 예정입니다.
+최신 모바일 지도 앱 패턴 (풀블리드 지도 + 바텀시트 3-state + chip overlay) 으로 재구성한 분석 화면.
 
-| 화면 | 경로 |
-|---|---|
-| 홈 화면 (검색 + 즐겨찾기) | `docs/images/home.png` |
-| 분석 화면 (지도 + 판단 바텀시트) | `docs/images/analysis.png` |
-| 후보 리스트 (추천/확인/제외) | `docs/images/map-candidates.png` |
+| 홈 | 분석 — 지도 + 판단 바텀시트 | 후보 리스트 (추천/확인/제외) |
+|---|---|---|
+| ![home](docs/images/home.png) | ![analysis](docs/images/analysis.png) | ![candidates](docs/images/map-candidates.png) |
+
+> 이미지 파일은 `docs/images/{home,analysis,map-candidates}.png` 에 넣으면 자동으로 표시됩니다. 직접 캡처 후 커밋해 주세요. (예: iPhone 14 시뮬레이터 또는 Chrome DevTools 모바일 뷰포트 390×844)
 
 ---
 

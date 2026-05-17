@@ -6,7 +6,7 @@ const LABEL: Record<Congestion, string> = {
   busy: "혼잡",
   risky: "만차 위험",
   full: "만차",
-  unknown: "정보 부족"
+  unknown: "정보 부족",
 };
 
 export default function RiskBadge({ value }: { value: Congestion }) {

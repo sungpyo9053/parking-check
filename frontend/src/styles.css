@@ -17,13 +17,16 @@
   box-sizing: border-box;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   margin: 0;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard",
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard",
     "Noto Sans KR", system-ui, sans-serif;
   color: var(--fg);
   background: var(--bg);
@@ -67,7 +70,8 @@ button {
   font-size: 17px;
 }
 
-.back-btn, .hist-btn {
+.back-btn,
+.hist-btn {
   background: none;
   border: none;
   font-size: 16px;
@@ -167,12 +171,24 @@ button {
   color: #fff;
 }
 
-.badge.easy { background: var(--easy); }
-.badge.moderate { background: var(--moderate); }
-.badge.busy { background: var(--busy); }
-.badge.risky { background: var(--risky); }
-.badge.full { background: var(--full); }
-.badge.unknown { background: var(--unknown); }
+.badge.easy {
+  background: var(--easy);
+}
+.badge.moderate {
+  background: var(--moderate);
+}
+.badge.busy {
+  background: var(--busy);
+}
+.badge.risky {
+  background: var(--risky);
+}
+.badge.full {
+  background: var(--full);
+}
+.badge.unknown {
+  background: var(--unknown);
+}
 
 /* card */
 .summary-card {
@@ -266,7 +282,9 @@ button {
   color: var(--muted);
 }
 
-.form-row input, .form-row select, .form-row textarea {
+.form-row input,
+.form-row select,
+.form-row textarea {
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -362,11 +380,21 @@ button {
 .self-status {
   font-weight: 700;
 }
-.self-status-likely { color: var(--easy); }
-.self-status-available { color: var(--easy); }
-.self-status-uncertain { color: var(--moderate); }
-.self-status-unavailable { color: var(--risky); }
-.self-status-unknown { color: var(--muted); }
+.self-status-likely {
+  color: var(--easy);
+}
+.self-status-available {
+  color: var(--easy);
+}
+.self-status-uncertain {
+  color: var(--moderate);
+}
+.self-status-unavailable {
+  color: var(--risky);
+}
+.self-status-unknown {
+  color: var(--muted);
+}
 
 .self-evidence {
   margin-top: 6px;
@@ -419,9 +447,18 @@ button {
   color: var(--brand);
   font-size: 12px;
 }
-.tag-low { background: #e5e7eb; color: #374151; }
-.tag-medium { background: #fde68a; color: #92400e; }
-.tag-high { background: #bbf7d0; color: #14532d; }
+.tag-low {
+  background: #e5e7eb;
+  color: #374151;
+}
+.tag-medium {
+  background: #fde68a;
+  color: #92400e;
+}
+.tag-high {
+  background: #bbf7d0;
+  color: #14532d;
+}
 
 /* 자체 주차 사용자 피드백 위젯 */
 .sp-feedback {
@@ -445,9 +482,18 @@ button {
   font-size: 12px;
   flex: 1;
 }
-.sp-feedback .sp-yes { border-color: #16a34a; color: #14532d; }
-.sp-feedback .sp-no  { border-color: #dc2626; color: #7f1d1d; }
-.sp-feedback .sp-unk { border-color: #9ca3af; color: #374151; }
+.sp-feedback .sp-yes {
+  border-color: #16a34a;
+  color: #14532d;
+}
+.sp-feedback .sp-no {
+  border-color: #dc2626;
+  color: #7f1d1d;
+}
+.sp-feedback .sp-unk {
+  border-color: #9ca3af;
+  color: #374151;
+}
 .sp-feedback-stats {
   margin-top: 6px;
   color: var(--muted);
@@ -483,9 +529,18 @@ button {
 }
 
 /* usability tier 카드 색상 */
-.tag-usable { background: #bbf7d0; color: #14532d; }
-.tag-caution { background: #fed7aa; color: #9a3412; }
-.tag-excluded { background: #fecaca; color: #7f1d1d; }
+.tag-usable {
+  background: #bbf7d0;
+  color: #14532d;
+}
+.tag-caution {
+  background: #fed7aa;
+  color: #9a3412;
+}
+.tag-excluded {
+  background: #fecaca;
+  color: #7f1d1d;
+}
 
 .pcard-usable {
   background: #f0fdf4;
@@ -647,6 +702,15 @@ button {
   padding: 0;
   line-height: 1;
 }
+.topbar-toast {
+  font-size: 11px;
+  color: #fff;
+  background: #111;
+  padding: 4px 8px;
+  border-radius: 999px;
+  align-self: center;
+  margin-left: 4px;
+}
 
 /* 반경 칩 — 지도 위 floating */
 .analyze-chips {
@@ -792,14 +856,33 @@ button {
   color: var(--muted);
   margin: 8px 16px 0;
 }
-.verdict-pill-good { background: #f0fdf4; border-color: #bbf7d0; }
-.verdict-pill-good .verdict-pill-title { color: #14532d; }
-.verdict-pill-caution { background: #fff7ed; border-color: #fed7aa; }
-.verdict-pill-caution .verdict-pill-title { color: #9a3412; }
-.verdict-pill-bad { background: #fef2f2; border-color: #fecaca; }
-.verdict-pill-bad .verdict-pill-title { color: #7f1d1d; }
-.verdict-pill-unknown { background: #f9fafb; }
-.verdict-pill-unknown .verdict-pill-title { color: #374151; }
+.verdict-pill-good {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.verdict-pill-good .verdict-pill-title {
+  color: #14532d;
+}
+.verdict-pill-caution {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+.verdict-pill-caution .verdict-pill-title {
+  color: #9a3412;
+}
+.verdict-pill-bad {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+.verdict-pill-bad .verdict-pill-title {
+  color: #7f1d1d;
+}
+.verdict-pill-unknown {
+  background: #f9fafb;
+}
+.verdict-pill-unknown .verdict-pill-title {
+  color: #374151;
+}
 
 /* SHEET BODY — 스크롤 가능 본문 */
 .sheet-body {
@@ -855,22 +938,30 @@ button {
   background: #f0fdf4;
   border-color: #bbf7d0;
 }
-.verdict-good .verdict-title { color: #14532d; }
+.verdict-good .verdict-title {
+  color: #14532d;
+}
 .verdict-caution {
   background: #fff7ed;
   border-color: #fed7aa;
 }
-.verdict-caution .verdict-title { color: #9a3412; }
+.verdict-caution .verdict-title {
+  color: #9a3412;
+}
 .verdict-bad {
   background: #fef2f2;
   border-color: #fecaca;
 }
-.verdict-bad .verdict-title { color: #7f1d1d; }
+.verdict-bad .verdict-title {
+  color: #7f1d1d;
+}
 .verdict-unknown {
   background: #f9fafb;
   border-color: #e5e7eb;
 }
-.verdict-unknown .verdict-title { color: #374151; }
+.verdict-unknown .verdict-title {
+  color: #374151;
+}
 
 /* 1순위 추천 카드의 보조 helper 텍스트 */
 .top-rec-help {
@@ -922,10 +1013,22 @@ button {
   line-height: 1.5;
   color: #312e81;
 }
-.self-card-good { background: #f0fdf4; border-color: #bbf7d0; }
-.self-card-caution { background: #fff7ed; border-color: #fed7aa; }
-.self-card-bad { background: #fef2f2; border-color: #fecaca; }
-.self-card-unknown { background: #f9fafb; border-color: #e5e7eb; }
+.self-card-good {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.self-card-caution {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+.self-card-bad {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+.self-card-unknown {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+}
 
 /* verdict 톤 태그 (good/caution/bad/unknown) */
 .tag-verdict-good {

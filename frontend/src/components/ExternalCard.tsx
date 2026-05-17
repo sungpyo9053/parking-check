@@ -26,7 +26,10 @@ function usabilityUserLabel(u: ExternalCandidate["usability"]): string {
   return "추천 제외";
 }
 
-function userKindLabel(category: string | null | undefined, source: ExternalCandidate["source"]): string {
+function userKindLabel(
+  category: string | null | undefined,
+  source: ExternalCandidate["source"],
+): string {
   const cat = category || "";
   if (cat.includes("공영")) return "공영주차장";
   if (cat.includes("노상")) return "공영(노상)주차장";
@@ -35,12 +38,20 @@ function userKindLabel(category: string | null | undefined, source: ExternalCand
   return "주차장";
 }
 
-export default function ExternalCard({ c, destinationLat, destinationLng, destinationName }: Props) {
+export default function ExternalCard({
+  c,
+  destinationLat,
+  destinationLng,
+  destinationName,
+}: Props) {
   const isWeb = c.source === "web_search";
   const hasCoords = c.lat != null && c.lng != null;
 
   function openKakaoMapSearch() {
-    const url = kakaoMapSearchUrl("주차장", { lat: destinationLat, lng: destinationLng });
+    const url = kakaoMapSearchUrl("주차장", {
+      lat: destinationLat,
+      lng: destinationLng,
+    });
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
@@ -53,14 +64,19 @@ export default function ExternalCard({ c, destinationLat, destinationLng, destin
     if (c.lat == null || c.lng == null) return;
     openKakaoFootRoute(
       { lat: c.lat, lng: c.lng, name: c.name },
-      { lat: destinationLat, lng: destinationLng, name: destinationName || "목적지" }
+      {
+        lat: destinationLat,
+        lng: destinationLng,
+        name: destinationName || "목적지",
+      },
     );
   }
 
   const isExcluded = c.usability === "private_restricted";
   const kindLabel = userKindLabel(c.category, c.source);
   const distM = c.walking_route_distance_m ?? c.distance_m;
-  const distLabel = c.walking_route_source === "osrm" ? "실 도보 경로" : "직선거리 기준";
+  const distLabel =
+    c.walking_route_source === "osrm" ? "실 도보 경로" : "직선거리 기준";
 
   // 추천 제외 카드는 '왜 제외'를 사용자 친화 문구로 한 줄 보여줌
   const excludedReasonLine = isExcluded
@@ -70,8 +86,13 @@ export default function ExternalCard({ c, destinationLat, destinationLng, destin
   return (
     <div className={`pcard pcard-${c.usability}`}>
       <div className="head">
-        <span className={usabilityTagClass(c.usability)}>{usabilityUserLabel(c.usability)}</span>
-        <span className="tag" style={{ background: "#f3f4f6", color: "#6b7280" }}>
+        <span className={usabilityTagClass(c.usability)}>
+          {usabilityUserLabel(c.usability)}
+        </span>
+        <span
+          className="tag"
+          style={{ background: "#f3f4f6", color: "#6b7280" }}
+        >
           {sourceLabel(c.source)}
         </span>
       </div>
@@ -80,7 +101,9 @@ export default function ExternalCard({ c, destinationLat, destinationLng, destin
         style={{
           fontWeight: 700,
           marginTop: 4,
-          ...(isExcluded ? { textDecoration: "line-through", color: "#9ca3af" } : null),
+          ...(isExcluded
+            ? { textDecoration: "line-through", color: "#9ca3af" }
+            : null),
         }}
       >
         {c.name}
@@ -104,17 +127,27 @@ export default function ExternalCard({ c, destinationLat, destinationLng, destin
       {!isExcluded && (
         <div className="meta">
           <span>{kindLabel}</span>
-          {(c.address || c.road_address) && <span>· {c.road_address || c.address}</span>}
+          {(c.address || c.road_address) && (
+            <span>· {c.road_address || c.address}</span>
+          )}
         </div>
       )}
       {!isExcluded && hasCoords && (
         <div className="meta muted">
-          {c.fee_summary === "확인 필요" ? "요금 확인 필요" : `요금 ${c.fee_summary}`} ·{" "}
-          {c.realtime_status === "실시간 정보 없음" ? "실시간 정보 없음" : c.realtime_status}
+          {c.fee_summary === "확인 필요"
+            ? "요금 확인 필요"
+            : `요금 ${c.fee_summary}`}{" "}
+          ·{" "}
+          {c.realtime_status === "실시간 정보 없음"
+            ? "실시간 정보 없음"
+            : c.realtime_status}
         </div>
       )}
       {excludedReasonLine && (
-        <div className="meta" style={{ color: "#9ca3af", fontSize: 12, marginTop: 4 }}>
+        <div
+          className="meta"
+          style={{ color: "#9ca3af", fontSize: 12, marginTop: 4 }}
+        >
           {excludedReasonLine}
         </div>
       )}

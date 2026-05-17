@@ -18,8 +18,8 @@ export default function PlaceSelectPage() {
     setItems(null);
     api
       .searchPlaces(q)
-      .then(res => setItems(res.items))
-      .catch(e => setError(e.message));
+      .then((res) => setItems(res.items))
+      .catch((e) => setError(e.message));
   }, [q]);
 
   function choose(p: PlaceItem) {
@@ -28,13 +28,15 @@ export default function PlaceSelectPage() {
       name: p.name,
       lat: p.lat,
       lng: p.lng,
-      place_id: p.place_id
+      place_id: p.place_id,
     });
     if (p.place_id != null) {
-      navigate(`/analyze?place_id=${p.place_id}&name=${encodeURIComponent(p.name)}`);
+      navigate(
+        `/analyze?place_id=${p.place_id}&name=${encodeURIComponent(p.name)}`,
+      );
     } else {
       navigate(
-        `/analyze?lat=${p.lat}&lng=${p.lng}&name=${encodeURIComponent(p.name)}`
+        `/analyze?lat=${p.lat}&lng=${p.lng}&name=${encodeURIComponent(p.name)}`,
       );
     }
   }
@@ -51,7 +53,7 @@ export default function PlaceSelectPage() {
       )}
 
       <ul className="list">
-        {items?.map(p => (
+        {items?.map((p) => (
           <li
             key={`${p.external_id}-${p.name}`}
             className="list-item clickable"

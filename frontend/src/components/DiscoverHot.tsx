@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, AnalyzeResponse, DiscoverHotResponse, HotPlaceItem } from "../lib/api";
+import {
+  api,
+  AnalyzeResponse,
+  DiscoverHotResponse,
+  HotPlaceItem,
+} from "../lib/api";
 import KakaoMap, { MapMarker } from "./KakaoMap";
 
 type ParkingMini =
@@ -8,11 +13,19 @@ type ParkingMini =
   | { state: "error"; message: string }
   | { state: "ok"; data: AnalyzeResponse };
 
-function selfBadge(status: string | undefined): { label: string; color: string; bg: string } {
-  if (status === "available") return { label: "자체 주차 가능", color: "#14532d", bg: "#bbf7d0" };
-  if (status === "likely") return { label: "자체 주차 가능성 높음", color: "#14532d", bg: "#bbf7d0" };
-  if (status === "uncertain") return { label: "자체 주차 불확실", color: "#9a3412", bg: "#fed7aa" };
-  if (status === "unavailable") return { label: "자체 주차 어려움", color: "#7f1d1d", bg: "#fecaca" };
+function selfBadge(status: string | undefined): {
+  label: string;
+  color: string;
+  bg: string;
+} {
+  if (status === "available")
+    return { label: "자체 주차 가능", color: "#14532d", bg: "#bbf7d0" };
+  if (status === "likely")
+    return { label: "자체 주차 가능성 높음", color: "#14532d", bg: "#bbf7d0" };
+  if (status === "uncertain")
+    return { label: "자체 주차 불확실", color: "#9a3412", bg: "#fed7aa" };
+  if (status === "unavailable")
+    return { label: "자체 주차 어려움", color: "#7f1d1d", bg: "#fecaca" };
   return { label: "자체 주차 정보 부족", color: "#374151", bg: "#e5e7eb" };
 }
 
@@ -31,7 +44,9 @@ export default function DiscoverHot() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [active, setActive] = useState<Category | null>(null);
-  const [parkingByKey, setParkingByKey] = useState<Record<string, ParkingMini>>({});
+  const [parkingByKey, setParkingByKey] = useState<Record<string, ParkingMini>>(
+    {},
+  );
 
   // 핫플 결과가 바뀌면 각 매장 lat/lng 로 analyze 병렬 호출해서 주차 정보 채우기
   useEffect(() => {
@@ -51,12 +66,16 @@ export default function DiscoverHot() {
       data.items.map((it, idx) =>
         api
           .analyze({ lat: it.lat, lng: it.lng, radius: 500 })
-          .then(d => ({ k: `${idx}-${it.name}`, ok: true as const, d }))
-          .catch(e => ({ k: `${idx}-${it.name}`, ok: false as const, e: e?.message || String(e) }))
-      )
-    ).then(results => {
+          .then((d) => ({ k: `${idx}-${it.name}`, ok: true as const, d }))
+          .catch((e) => ({
+            k: `${idx}-${it.name}`,
+            ok: false as const,
+            e: e?.message || String(e),
+          })),
+      ),
+    ).then((results) => {
       if (cancelled) return;
-      setParkingByKey(prev => {
+      setParkingByKey((prev) => {
         const out = { ...prev };
         for (const r of results) {
           out[r.k] = r.ok
@@ -79,15 +98,15 @@ export default function DiscoverHot() {
     }
     setLoading(true);
     navigator.geolocation.getCurrentPosition(
-      pos => {
+      (pos) => {
         setCoord({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setLoading(false);
       },
-      err => {
+      (err) => {
         setLoading(false);
         setError(`위치 권한 거부 또는 실패: ${err.message}`);
       },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 }
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
     );
   }
 
@@ -101,11 +120,11 @@ export default function DiscoverHot() {
     setError(null);
     api
       .discoverHot({ lat: coord.lat, lng: coord.lng, category: cat, limit: 3 })
-      .then(d => {
+      .then((d) => {
         setData(d);
         setLoading(false);
       })
-      .catch(e => {
+      .catch((e) => {
         setError(e.message);
         setLoading(false);
       });
@@ -113,7 +132,7 @@ export default function DiscoverHot() {
 
   function openInParking(it: HotPlaceItem) {
     navigate(
-      `/analyze?lat=${it.lat}&lng=${it.lng}&name=${encodeURIComponent(it.name)}`
+      `/analyze?lat=${it.lat}&lng=${it.lng}&name=${encodeURIComponent(it.name)}`,
     );
   }
 
@@ -176,7 +195,9 @@ export default function DiscoverHot() {
   return (
     <div className="discover-block">
       <div className="discover-head">
-        <h2 className="h2" style={{ margin: 0 }}>주변 핫플</h2>
+        <h2 className="h2" style={{ margin: 0 }}>
+          주변 핫플
+        </h2>
         {coord && (
           <span className="muted" style={{ fontSize: 11 }}>
             현위치 {coord.lat.toFixed(3)}, {coord.lng.toFixed(3)}
@@ -185,18 +206,23 @@ export default function DiscoverHot() {
         )}
       </div>
       <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-        현위치 기준 인스타에서 자주 언급되는 카페/맛집/가볼곳 추천 (Tavily 웹 검색 기반).
+        현위치 기준 인스타에서 자주 언급되는 카페/맛집/가볼곳 추천 (Tavily 웹
+        검색 기반).
       </p>
 
       {!coord && (
-        <button className="btn primary" onClick={getLocation} style={{ width: "100%" }}>
+        <button
+          className="btn primary"
+          onClick={getLocation}
+          style={{ width: "100%" }}
+        >
           {loading ? "현위치 확인 중..." : "📍 현위치 권한 허용하고 시작"}
         </button>
       )}
 
       {coord && (
         <div className="search-box" style={{ marginTop: 4 }}>
-          {CATS.map(c => (
+          {CATS.map((c) => (
             <button
               key={c.key}
               type="button"
@@ -238,7 +264,9 @@ export default function DiscoverHot() {
                   {idx + 1}. {it.name}
                 </span>
                 {it.instagram_mentions > 0 && (
-                  <span className="tag tag-high">📷 ×{it.instagram_mentions}</span>
+                  <span className="tag tag-high">
+                    📷 ×{it.instagram_mentions}
+                  </span>
                 )}
               </div>
               <div className="meta">
@@ -246,7 +274,9 @@ export default function DiscoverHot() {
                 {it.category && <span> · {it.category}</span>}
               </div>
               {(it.address || it.road_address) && (
-                <div className="meta muted">{it.road_address || it.address}</div>
+                <div className="meta muted">
+                  {it.road_address || it.address}
+                </div>
               )}
               <div className="meta muted" style={{ fontSize: 11 }}>
                 hot score {it.hot_score}
@@ -258,14 +288,20 @@ export default function DiscoverHot() {
                 if (!pk) return null;
                 if (pk.state === "loading") {
                   return (
-                    <div className="parking-mini muted" style={{ fontSize: 11 }}>
+                    <div
+                      className="parking-mini muted"
+                      style={{ fontSize: 11 }}
+                    >
                       ⏳ 주차 가능 여부 확인 중…
                     </div>
                   );
                 }
                 if (pk.state === "error") {
                   return (
-                    <div className="parking-mini muted" style={{ fontSize: 11 }}>
+                    <div
+                      className="parking-mini muted"
+                      style={{ fontSize: 11 }}
+                    >
                       주차 정보 확인 실패 — {pk.message}
                     </div>
                   );
@@ -283,24 +319,40 @@ export default function DiscoverHot() {
                         {b.label}
                       </span>
                       {sp?.confidence != null && sp.confidence > 0 && (
-                        <span className="muted" style={{ fontSize: 11, marginLeft: 6 }}>
+                        <span
+                          className="muted"
+                          style={{ fontSize: 11, marginLeft: 6 }}
+                        >
                           ({sp.confidence}점)
                         </span>
                       )}
                     </div>
                     {tr ? (
-                      <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
+                      <div
+                        className="muted"
+                        style={{ fontSize: 12, marginTop: 3 }}
+                      >
                         ⭐ 추천: <strong>{tr.candidate.name}</strong>
                         {tr.candidate.walking_minutes != null && (
-                          <span> · 도보 약 {tr.candidate.walking_minutes}분</span>
+                          <span>
+                            {" "}
+                            · 도보 약 {tr.candidate.walking_minutes}분
+                          </span>
                         )}
                       </div>
-                    ) : sp?.status === "available" || sp?.status === "likely" ? (
-                      <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
+                    ) : sp?.status === "available" ||
+                      sp?.status === "likely" ? (
+                      <div
+                        className="muted"
+                        style={{ fontSize: 12, marginTop: 3 }}
+                      >
                         매장 자체 주차로 해결
                       </div>
                     ) : (
-                      <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
+                      <div
+                        className="muted"
+                        style={{ fontSize: 12, marginTop: 3 }}
+                      >
                         주변 추천 주차장 없음 — 분석 페이지에서 확인
                       </div>
                     )}
@@ -309,7 +361,10 @@ export default function DiscoverHot() {
               })()}
 
               <div className="actions">
-                <button className="btn primary" onClick={() => openInParking(it)}>
+                <button
+                  className="btn primary"
+                  onClick={() => openInParking(it)}
+                >
                   주차 분석
                 </button>
                 <button className="btn" onClick={() => openKakaoMap(it)}>

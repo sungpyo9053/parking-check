@@ -23,12 +23,17 @@ export default function ParkingCard({
     if (destinationLat == null || destinationLng == null) return;
     openKakaoFootRoute(
       { lat: c.lat, lng: c.lng, name: c.name },
-      { lat: destinationLat, lng: destinationLng, name: destinationName || "목적지" }
+      {
+        lat: destinationLat,
+        lng: destinationLng,
+        name: destinationName || "목적지",
+      },
     );
   }
 
   const distM = c.walking_route_distance_m ?? c.distance_m;
-  const distLabel = c.walking_route_source === "osrm" ? "실 도보 경로" : "직선거리 기준";
+  const distLabel =
+    c.walking_route_source === "osrm" ? "실 도보 경로" : "직선거리 기준";
 
   return (
     <div className="pcard pcard-usable">
@@ -58,9 +63,13 @@ export default function ParkingCard({
       </div>
       {c.realtime && (
         <div className="meta">
-          잔여 {c.realtime.available_count ?? "?"} / {c.realtime.total_capacity ?? "?"} 면
+          잔여 {c.realtime.available_count ?? "?"} /{" "}
+          {c.realtime.total_capacity ?? "?"} 면
           {c.realtime.stale_seconds != null && (
-            <span> · {Math.round(c.realtime.stale_seconds / 60)}분 전 기준</span>
+            <span>
+              {" "}
+              · {Math.round(c.realtime.stale_seconds / 60)}분 전 기준
+            </span>
           )}
         </div>
       )}

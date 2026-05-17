@@ -83,7 +83,11 @@ export default function HomePage() {
     setGroupErr(null);
     try {
       const g = await api.createFavGroup();
-      const sg: StoredGroup = { code: g.code, name: g.name, joined_at: Date.now() };
+      const sg: StoredGroup = {
+        code: g.code,
+        name: g.name,
+        joined_at: Date.now(),
+      };
       setGroup(sg);
       setGroupState(sg);
       setGroupItems([]);
@@ -105,7 +109,8 @@ export default function HomePage() {
   }
 
   function leaveGroup() {
-    if (!confirm("그룹에서 나가시겠어요? 다른 사람의 즐겨찾기는 남아있어요.")) return;
+    if (!confirm("그룹에서 나가시겠어요? 다른 사람의 즐겨찾기는 남아있어요."))
+      return;
     clearGroup();
     setGroupState(null);
     setGroupItems([]);
@@ -113,10 +118,11 @@ export default function HomePage() {
 
   async function removeGroupItem(item: FavoriteItemOut) {
     if (!group) return;
-    if (!confirm(`'${item.name}' 즐겨찾기를 제거할까요? (둘 다에서 사라져요)`)) return;
+    if (!confirm(`'${item.name}' 즐겨찾기를 제거할까요? (둘 다에서 사라져요)`))
+      return;
     try {
       await api.removeFavItem(group.code, item.id);
-      setGroupItems(prev => prev.filter(i => i.id !== item.id));
+      setGroupItems((prev) => prev.filter((i) => i.id !== item.id));
     } catch (e) {
       alert("제거 실패: " + (e instanceof Error ? e.message : String(e)));
     }
@@ -153,7 +159,8 @@ export default function HomePage() {
     <div>
       <h1 className="h1">주차될까</h1>
       <p className="tagline">
-        가기 전에 주차부터 확인하세요. 자체 주차 가능성, 주변 주차장, 도보 시간을 한 번에 보여드립니다.
+        가기 전에 주차부터 확인하세요. 자체 주차 가능성, 주변 주차장, 도보
+        시간을 한 번에 보여드립니다.
       </p>
 
       <form className="search-box" onSubmit={submit}>
@@ -161,7 +168,7 @@ export default function HomePage() {
           inputMode="search"
           placeholder="예: 수유전통시장, 더홈 안양, 디올 성수"
           value={q}
-          onChange={e => setQ(e.target.value)}
+          onChange={(e) => setQ(e.target.value)}
           autoFocus
         />
         <button type="submit">검색</button>
@@ -188,16 +195,27 @@ export default function HomePage() {
             }}
           >
             <span>
-              그룹 코드 <strong style={{ fontFamily: "monospace" }}>{group.code}</strong>
+              그룹 코드{" "}
+              <strong style={{ fontFamily: "monospace" }}>{group.code}</strong>
               {group.name ? ` · ${group.name}` : ""}
             </span>
             <span style={{ display: "flex", gap: 6 }}>
-              <button className="btn" style={{ flex: "none", padding: "4px 10px", fontSize: 12 }} onClick={shareGroup}>
+              <button
+                className="btn"
+                style={{ flex: "none", padding: "4px 10px", fontSize: 12 }}
+                onClick={shareGroup}
+              >
                 📤 코드 공유
               </button>
               <button
                 className="btn"
-                style={{ flex: "none", padding: "4px 10px", fontSize: 12, color: "#dc2626", borderColor: "#dc2626" }}
+                style={{
+                  flex: "none",
+                  padding: "4px 10px",
+                  fontSize: 12,
+                  color: "#dc2626",
+                  borderColor: "#dc2626",
+                }}
                 onClick={leaveGroup}
               >
                 나가기
@@ -210,7 +228,7 @@ export default function HomePage() {
             </p>
           ) : (
             <ul className="list" style={{ marginBottom: 12 }}>
-              {groupItems.map(it => (
+              {groupItems.map((it) => (
                 <li
                   key={`g-${it.id}`}
                   className="list-item clickable"
@@ -221,7 +239,7 @@ export default function HomePage() {
                   {it.address && <span className="sub">{it.address}</span>}
                   <button
                     type="button"
-                    onClick={e => {
+                    onClick={(e) => {
                       e.stopPropagation();
                       removeGroupItem(it);
                     }}
@@ -250,12 +268,17 @@ export default function HomePage() {
             둘이 같은 즐겨찾기를 공유하려면 그룹을 만들거나 코드를 입력하세요.
           </p>
           <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-            <button className="btn primary" disabled={groupBusy} onClick={createGroup} style={{ flex: 1 }}>
+            <button
+              className="btn primary"
+              disabled={groupBusy}
+              onClick={createGroup}
+              style={{ flex: 1 }}
+            >
               {groupBusy ? "생성 중..." : "+ 그룹 만들기"}
             </button>
           </div>
           <form
-            onSubmit={e => {
+            onSubmit={(e) => {
               e.preventDefault();
               if (codeInput.trim()) joinGroup(codeInput);
             }}
@@ -264,7 +287,7 @@ export default function HomePage() {
             <input
               placeholder="받은 코드 입력 (예: K7B4M9Q2)"
               value={codeInput}
-              onChange={e => setCodeInput(e.target.value)}
+              onChange={(e) => setCodeInput(e.target.value)}
               style={{
                 flex: 1,
                 padding: "8px 10px",
@@ -274,11 +297,19 @@ export default function HomePage() {
                 fontFamily: "monospace",
               }}
             />
-            <button className="btn" type="submit" disabled={groupBusy || !codeInput.trim()}>
+            <button
+              className="btn"
+              type="submit"
+              disabled={groupBusy || !codeInput.trim()}
+            >
               가입
             </button>
           </form>
-          {groupErr && <p className="error" style={{ fontSize: 12, marginTop: 6 }}>{groupErr}</p>}
+          {groupErr && (
+            <p className="error" style={{ fontSize: 12, marginTop: 6 }}>
+              {groupErr}
+            </p>
+          )}
         </div>
       )}
 
@@ -286,7 +317,7 @@ export default function HomePage() {
         <>
           <h2 className="h2">★ 내 즐겨찾기 (이 기기만)</h2>
           <ul className="list">
-            {favorites.map(f => (
+            {favorites.map((f) => (
               <li
                 key={`fav-${f.place_id ?? `${f.lat},${f.lng}`}`}
                 className="list-item clickable"
@@ -297,7 +328,7 @@ export default function HomePage() {
                 {f.address && <span className="sub">{f.address}</span>}
                 <button
                   type="button"
-                  onClick={e => removeFav(f, e)}
+                  onClick={(e) => removeFav(f, e)}
                   style={{
                     position: "absolute",
                     right: 8,
@@ -320,10 +351,12 @@ export default function HomePage() {
 
       <h2 className="h2">최근 검색</h2>
       {items.length === 0 ? (
-        <p className="muted" style={{ fontSize: 13 }}>아직 검색 기록이 없습니다.</p>
+        <p className="muted" style={{ fontSize: 13 }}>
+          아직 검색 기록이 없습니다.
+        </p>
       ) : (
         <ul className="list">
-          {items.map(it => (
+          {items.map((it) => (
             <li
               key={`${it.place_id ?? it.name}-${it.ts}`}
               className="list-item clickable"

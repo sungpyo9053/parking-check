@@ -16,14 +16,22 @@ export type ShareResult =
 
 export async function sharePage(data: ShareData): Promise<ShareResult> {
   // Web Share API
-  if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+  if (
+    typeof navigator !== "undefined" &&
+    typeof navigator.share === "function"
+  ) {
     try {
-      await navigator.share({ title: data.title, text: data.text, url: data.url });
+      await navigator.share({
+        title: data.title,
+        text: data.text,
+        url: data.url,
+      });
       return { kind: "shared" };
     } catch (e: unknown) {
       // AbortError = 사용자가 취소한 거. 에러 아님.
       const err = e instanceof Error ? e : new Error(String(e));
-      if (err.name === "AbortError") return { kind: "error", message: "취소됨" };
+      if (err.name === "AbortError")
+        return { kind: "error", message: "취소됨" };
       // share 실패 시 복사로 폴백 시도
     }
   }
