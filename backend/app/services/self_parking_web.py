@@ -228,7 +228,7 @@ def collect_web_self_parking_evidence(
 
     웹 검색 비활성/실패 시 (0, []) 반환.
     """
-    if not web_parking_search.is_enabled():
+    if not web_parking_search.any_provider_enabled():
         return 0, []
     if not (dest_name or dest_addr):
         return 0, []

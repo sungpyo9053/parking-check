@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     TAVILY_API_KEY: str = ""
     WEB_SEARCH_ENABLED: bool = False
 
+    # Naver Search API (Tavily fallback / 한국 자료 강함)
+    # 발급: https://developers.naver.com/apps/#/register (검색 API 체크)
+    NAVER_CLIENT_ID: str = ""
+    NAVER_CLIENT_SECRET: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]

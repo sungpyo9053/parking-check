@@ -247,7 +247,7 @@ def collect_external_candidates(
     """
     info = FallbackInfo(
         db_count=db_count,
-        web_search_enabled=web_parking_search.is_enabled(),
+        web_search_enabled=web_parking_search.any_provider_enabled(),
         sources_tried=["public_db"],
     )
 

@@ -17,6 +17,7 @@ import httpx
 
 from ..config import get_settings
 from ..utils.cache import TTLCache
+from . import naver_search
 
 # 6시간 TTL — Tavily 한도 보호 위해 길게. 같은 (name, addr) 조합 결과 reuse.
 _RAW_CACHE: TTLCache[tuple, list[dict]] = TTLCache(max_size=1024, ttl_seconds=6 * 3600)
@@ -32,8 +33,14 @@ logger = logging.getLogger(__name__)
 
 
 def is_enabled() -> bool:
+    """Tavily 만의 활성 여부. Naver 는 naver_search.is_enabled() 별도."""
     s = get_settings()
     return bool(s.WEB_SEARCH_ENABLED and s.TAVILY_API_KEY)
+
+
+def any_provider_enabled() -> bool:
+    """Tavily OR Naver 중 하나라도 활성이면 True."""
+    return is_enabled() or naver_search.is_enabled()
 
 
 def _short_addr_token(address: str | None) -> str | None:
@@ -111,20 +118,18 @@ def search_web_parking(
 ) -> list[dict]:
     """웹 검색을 통해 주차 관련 후보 정보를 수집한다.
 
-    반환 항목은 라우터에서 ExternalCandidate 로 매핑된다.
-    Tavily 결과 원본 키: title, url, content, score.
+    우선순위:
+      1) Tavily (활성 시) — snippet 정리 잘됨, 무료 1k/월
+      2) Naver Search (Tavily 결과 비었거나 한도 초과 시 자동 fallback)
 
-    캐시:
-      - (name, addr) 키로 6시간 TTL 저장. 한도 보호 + 동일 매장 재호출 0 cost.
+    반환 형식: {query, title, url, snippet, score}
+    캐시: (name, addr) 6시간 TTL.
     """
-    if not is_enabled():
-        return []
     cache_key = ((destination_name or "").strip(), (destination_address or "").strip())
     cached = _RAW_CACHE.get(cache_key)
     if cached is not None:
         return cached
 
-    api_key = get_settings().TAVILY_API_KEY
     queries = build_queries(destination_name, destination_address)
     if not queries:
         _RAW_CACHE.set(cache_key, [])
@@ -132,30 +137,56 @@ def search_web_parking(
 
     aggregated: list[dict] = []
     seen_urls: set[str] = set()
-    for q in queries:
-        try:
-            results = _tavily_search_one(q, api_key, _MAX_RESULTS_PER_QUERY)
-        except httpx.HTTPError as e:
-            logger.warning("tavily HTTPError on query=%r: %s", q, e)
-            continue
-        for r in results:
+
+    # 1) Tavily 우선 (활성 시)
+    if is_enabled():
+        api_key = get_settings().TAVILY_API_KEY
+        for q in queries:
+            try:
+                results = _tavily_search_one(q, api_key, _MAX_RESULTS_PER_QUERY)
+            except httpx.HTTPError as e:
+                logger.warning("tavily HTTPError on query=%r: %s", q, e)
+                continue
+            for r in results:
+                url = (r.get("url") or "").strip()
+                if not url or url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                aggregated.append(
+                    {
+                        "query": q,
+                        "title": (r.get("title") or "").strip() or None,
+                        "url": url,
+                        "snippet": (r.get("content") or "").strip() or None,
+                        "score": r.get("score"),
+                        "provider": "tavily",
+                    }
+                )
+                if len(aggregated) >= _MAX_TOTAL_RESULTS:
+                    _RAW_CACHE.set(cache_key, aggregated)
+                    return aggregated
+
+    # 2) Tavily 비활성/결과 비면 Naver fallback
+    if not aggregated and naver_search.is_enabled():
+        naver_items = naver_search.search(queries, display=8)
+        for r in naver_items:
             url = (r.get("url") or "").strip()
             if not url or url in seen_urls:
                 continue
             seen_urls.add(url)
             aggregated.append(
                 {
-                    "query": q,
-                    "title": (r.get("title") or "").strip() or None,
+                    "query": queries[0] if queries else "",
+                    "title": r.get("title") or None,
                     "url": url,
-                    "snippet": (r.get("content") or "").strip() or None,
-                    "score": r.get("score"),
+                    "snippet": r.get("content") or None,
+                    "score": None,
+                    "provider": "naver",
                 }
             )
             if len(aggregated) >= _MAX_TOTAL_RESULTS:
-                _RAW_CACHE.set(cache_key, aggregated)
-                return aggregated
-    # 결과가 비었어도 캐시 — 한도 초과 응답을 짧게 반복 호출하지 않게
+                break
+
     _RAW_CACHE.set(cache_key, aggregated)
     return aggregated
 
