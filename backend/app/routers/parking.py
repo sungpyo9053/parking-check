@@ -289,31 +289,30 @@ def analyze(
         )
 
     # --- 최우선 추천 1개 선정 ---
-    # 자체 주차가 명확히 가능(available)하거나 가능성 높음(likely)이면 그쪽이
-    # 곧 답이므로 별도 외부 추천을 강조하지 않는다 (사용자 결정 방해 방지).
+    # 자체 주차 가능 여부와 무관하게 외부 후보 중 1위는 항상 노출 — 자체로 안 되는
+    # 만약을 위한 백업 + 지도에 ⭐ 마커로 시각 표시. 자체 주차 카드와 시각 충돌은
+    # frontend 에서 카드 노출 분기로 해결.
     top_rec: TopRecommendation | None = None
-    if self_parking.status not in ("available", "likely"):
-        top_cand, top_score, top_reasons = pick_top_external(external_candidates)
-        if top_cand is not None:
-            walk = top_cand.walking_minutes
-            dist = top_cand.distance_m
-            if walk is not None and dist is not None:
-                rationale = (
-                    f"외부 후보 {len(external_candidates)}개 중 거리·개방성·정보 신뢰도를 "
-                    f"종합해 1순위로 추천합니다. 주차 후 목적지까지 직선거리 기준 "
-                    f"도보 약 {walk}분 ({dist}m)."
-                )
-            else:
-                rationale = (
-                    f"외부 후보 {len(external_candidates)}개 중 거리·개방성·정보 신뢰도를 "
-                    f"종합해 1순위로 추천합니다."
-                )
-            top_rec = TopRecommendation(
-                candidate=top_cand,
-                score=top_score,
-                reasons=top_reasons,
-                rationale=rationale,
-            )
+    top_cand, top_score, top_reasons = pick_top_external(external_candidates)
+    if top_cand is not None:
+        walk = top_cand.walking_minutes
+        dist = top_cand.walking_route_distance_m or top_cand.distance_m
+        src = top_cand.walking_route_source
+        time_phrase = (
+            f"도보 약 {walk}분 ({dist}m, "
+            + ("실 경로)" if src == "osrm" else "직선거리)")
+        ) if walk is not None and dist is not None else ""
+        rationale = (
+            f"외부 후보 {len(external_candidates)}개 중 거리·개방성·정보 신뢰도를 "
+            f"종합해 1순위로 추천합니다."
+            + (f" 주차 후 목적지까지 {time_phrase}." if time_phrase else "")
+        )
+        top_rec = TopRecommendation(
+            candidate=top_cand,
+            score=top_score,
+            reasons=top_reasons,
+            rationale=rationale,
+        )
 
     return AnalyzeResponse(
         destination=Destination(
