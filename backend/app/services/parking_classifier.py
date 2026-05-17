@@ -124,9 +124,17 @@ def _contains_any(text: str, kws: tuple[str, ...]) -> str | None:
 
 
 def _destination_match(name: str, destination_name: str | None) -> bool:
-    """주차장명에 목적지명이 강하게 포함되는지.
+    """주차장명에 목적지의 브랜드 토큰이 강하게 포함되는지.
 
-    예: 목적지='더홈', 주차장명='더홈 전용주차장' → True
+    예:
+      목적지='더홈',                주차장='더홈 전용주차장'       → True
+      목적지='세이브마트 신림본점',  주차장='세이브마트 주차장'     → True (브랜드 토큰 일치)
+      목적지='나이스파크 어반빌리움', 주차장='나이스파크 강남'       → True
+
+    매칭 규칙:
+      1) 정규화된 destination_name 이 park_name 에 완전 포함 (기존)
+      2) 또는 destination 의 토큰 중 길이 >=3 이고 일반어가 아닌 토큰 (보통 첫 토큰=브랜드)
+         이 park_name 정규화된 형태에 포함
     """
     if not destination_name:
         return False
@@ -134,7 +142,25 @@ def _destination_match(name: str, destination_name: str | None) -> bool:
     d_norm = _norm(destination_name)
     if not n_norm or not d_norm or len(d_norm) < 2:
         return False
-    return d_norm in n_norm
+    if d_norm in n_norm:
+        return True
+
+    # 토큰 단위 매칭. 한국어/영문/숫자 토큰 분리.
+    import re as _re
+    tokens = _re.findall(r"[가-힣A-Za-z0-9]+", destination_name)
+    GENERIC = {
+        "주차장", "주차", "본점", "지점", "점", "센터", "타워", "빌딩",
+        "상가", "마트", "약국", "병원", "근처", "옆", "앞", "뒤", "역",
+        "맞은편",
+    }
+    for tok in tokens:
+        if len(tok) < 3:
+            continue
+        if tok in GENERIC:
+            continue
+        if _norm(tok) in n_norm:
+            return True
+    return False
 
 
 def classify_kakao_parking(
