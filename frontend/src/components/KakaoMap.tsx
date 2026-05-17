@@ -15,7 +15,7 @@ export type MapMarker = {
   lat: number;
   lng: number;
   label?: string;
-  kind?: "destination" | "parking";
+  kind?: "destination" | "parking" | "hot" | "current";
   detail?: MapMarkerDetail;
 };
 
@@ -122,23 +122,42 @@ export default function KakaoMap({
     markers.forEach(m => {
       const pos = new k.maps.LatLng(m.lat, m.lng);
       const isDest = m.kind === "destination";
+      const isHot = m.kind === "hot";
+      const isCurrent = m.kind === "current";
 
       const u = m.detail?.usability;
       const c = (u && USABILITY_COLOR[u]) || USABILITY_COLOR.usable;
 
-      const pinHtml = isDest
-        ? `<div style="display:flex;align-items:center;gap:6px;transform:translate(-50%,-100%);">
+      let pinHtml: string;
+      if (isDest) {
+        pinHtml = `<div style="display:flex;align-items:center;gap:6px;transform:translate(-50%,-100%);">
              <div style="background:#0b6cff;color:#fff;border-radius:999px;padding:6px 10px;
                          font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.18);
                          border:2px solid #fff;">📍 목적지${m.label ? ` · ${escapeHtml(m.label)}` : ""}</div>
-           </div>`
-        : `<div data-marker-id="${escapeHtml(m.id)}" style="display:flex;align-items:center;gap:4px;transform:translate(-50%,-100%);cursor:pointer;">
+           </div>`;
+      } else if (isCurrent) {
+        pinHtml = `<div style="display:flex;align-items:center;gap:6px;transform:translate(-50%,-100%);">
+             <div style="background:#3b82f6;color:#fff;border-radius:999px;padding:5px 9px;
+                         font-size:11px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.18);
+                         border:2px solid #fff;">📡 현위치</div>
+           </div>`;
+      } else if (isHot) {
+        pinHtml = `<div style="display:flex;align-items:center;gap:4px;transform:translate(-50%,-100%);cursor:pointer;">
+             <div style="background:#fef3c7;color:#92400e;border:2px solid #f59e0b;
+                         border-radius:999px;padding:3px 8px;font-size:11px;font-weight:800;
+                         box-shadow:0 1px 3px rgba(0,0,0,.12);white-space:nowrap;">
+               ⭐ ${m.label ? escapeHtml(m.label) : "핫플"}
+             </div>
+           </div>`;
+      } else {
+        pinHtml = `<div data-marker-id="${escapeHtml(m.id)}" style="display:flex;align-items:center;gap:4px;transform:translate(-50%,-100%);cursor:pointer;">
              <div style="background:${c.bg};color:${c.fg};border:2px solid ${c.bd};border-radius:6px;
                          padding:2px 6px;font-size:11px;font-weight:800;
                          box-shadow:0 1px 3px rgba(0,0,0,.12);white-space:nowrap;">
                P${m.label ? ` ${escapeHtml(m.label)}` : ""}
              </div>
            </div>`;
+      }
 
       const overlay = new k.maps.CustomOverlay({
         position: pos,

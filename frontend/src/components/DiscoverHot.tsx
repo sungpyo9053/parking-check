@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, AnalyzeResponse, DiscoverHotResponse, HotPlaceItem } from "../lib/api";
+import KakaoMap, { MapMarker } from "./KakaoMap";
 
 type ParkingMini =
   | { state: "loading" }
@@ -123,6 +124,55 @@ export default function DiscoverHot() {
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
+  // 지도 마커: 현위치 + 각 핫플 + 각 핫플의 추천 주차장
+  const markers = useMemo<MapMarker[]>(() => {
+    if (!data || data.items.length === 0 || !coord) return [];
+    const out: MapMarker[] = [
+      {
+        id: "me",
+        lat: coord.lat,
+        lng: coord.lng,
+        kind: "current",
+      },
+    ];
+    data.items.forEach((it, idx) => {
+      out.push({
+        id: `hot-${idx}`,
+        lat: it.lat,
+        lng: it.lng,
+        label: it.name,
+        kind: "hot",
+        detail: {
+          name: it.name,
+          distanceM: it.distance_m,
+          walkingMinutes: it.walking_minutes,
+          usabilityLabel: `⭐ 핫플 #${idx + 1}`,
+        },
+      });
+      const pk = parkingByKey[`${idx}-${it.name}`];
+      if (pk?.state === "ok") {
+        const tr = pk.data.top_recommendation;
+        if (tr && tr.candidate.lat != null && tr.candidate.lng != null) {
+          out.push({
+            id: `park-${idx}`,
+            lat: tr.candidate.lat,
+            lng: tr.candidate.lng,
+            label: tr.candidate.name,
+            kind: "parking",
+            detail: {
+              name: tr.candidate.name,
+              usability: "usable",
+              usabilityLabel: `${it.name} 추천 주차장`,
+              distanceM: tr.candidate.distance_m,
+              walkingMinutes: tr.candidate.walking_minutes,
+            },
+          });
+        }
+      }
+    });
+    return out;
+  }, [data, coord, parkingByKey]);
+
   return (
     <div className="discover-block">
       <div className="discover-head">
@@ -167,6 +217,16 @@ export default function DiscoverHot() {
 
       {data && data.items.length === 0 && !loading && (
         <p className="muted">결과가 없습니다. 반경/카테고리를 바꿔 보세요.</p>
+      )}
+
+      {data && data.items.length > 0 && coord && (
+        <KakaoMap
+          center={coord}
+          markers={markers}
+          destinationLat={coord.lat}
+          destinationLng={coord.lng}
+          destinationName="현위치"
+        />
       )}
 
       {data && data.items.length > 0 && (
