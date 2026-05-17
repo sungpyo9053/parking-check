@@ -55,10 +55,10 @@ def _osrm_call(from_lat, from_lng, to_lat, to_lng) -> dict | None:
         return None
     route = data["routes"][0]
     dist = int(round(float(route.get("distance") or 0)))
-    dur_sec = float(route.get("duration") or 0)
-    # OSRM 의 foot 평균 5km/h ≒ 83m/min. 한국 도시 보행 4.2km/h ≒ 70m/min 으로
-    # 약간 보정 (1.18 배). 너무 짧은 거리는 1분 미만이라 max(1) 보장.
-    minutes = max(1, math.ceil(dur_sec * 1.18 / 60))
+    # 주의: OSRM 공식 데모의 foot duration 이 한국 데이터에서 비정상적으로
+    # 빠르게 나오는 케이스가 있음 (1251m 을 3분 ≒ 25km/h 로 산정). 그래서
+    # 거리는 OSRM 의 실 경로 값을 그대로 쓰되 시간은 70m/min 으로 재계산.
+    minutes = max(1, math.ceil(dist / 70))
     return {"distance_m": dist, "walking_minutes": minutes, "source": "osrm"}
 
 
