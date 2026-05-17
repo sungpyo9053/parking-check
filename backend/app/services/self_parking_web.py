@@ -91,6 +91,14 @@ _SELF_NEGATION_RE = _re.compile(
 )
 _SELF_NEGATION_WEIGHT = -50
 
+# (N4) 마크/이모지 부재 표시: '주차(장)? ❌|✕|✖|✗|✘|❎|⛔|🚫|×'
+# 한국어 후기에서 기호로 자체 주차 부재 표현하는 경우 (이재모피자 ev1 등).
+# 영문 X 와 공백은 의도적으로 제외 (FP 너무 큼 — '주차장 X호'/'주차장 1.5km' 등).
+_NO_MARK_RE = _re.compile(
+    r"주차(?:장)?\s*(?:❌|✕|✖|✗|✘|❎|⛔|🚫|×|✘)"
+)
+_NO_MARK_WEIGHT = -45
+
 # (N2) 인근/도보 거리 주차장 안내
 _NEARBY_PARKING_RE = _re.compile(
     r"(?:인근|근처|주변|맞은편|"
@@ -175,6 +183,9 @@ def _apply_regex(
 # 'likely' / 'uncertain' 격상 임계
 THRESHOLD_LIKELY = 55
 THRESHOLD_UNCERTAIN = 25
+# 부재 시그널은 단일 강 negative(-50) 만 잡혀도 unavailable 로 가도록 임계 완화
+# ('매장 앞은 주차불가' / '주차장 ❌' 같이 1건만 있어도 명확한 케이스 회수)
+THRESHOLD_UNAVAILABLE_NEG = 45
 
 
 # --- 카테고리 prior ---
@@ -309,6 +320,7 @@ def _score_text(text: str) -> tuple[int, list[str]]:
         (_SELF_NEGATION_RE, _SELF_NEGATION_WEIGHT, "자체부재"),
         (_NEARBY_PARKING_RE, _NEARBY_PARKING_WEIGHT, "인근안내"),
         (_EXTERNAL_RECOMMEND_RE, _EXTERNAL_RECOMMEND_WEIGHT, "외부추천"),
+        (_NO_MARK_RE, _NO_MARK_WEIGHT, "주차X마크"),
     ]:
         s, m = _apply_regex(pat, text, w, label)
         neg_score += s
@@ -490,7 +502,7 @@ def enrich_self_parking(
                 "주차 관련 약한 긍정 신호가 확인됩니다. "
                 "정확한 가능 여부는 매장 확인이 필요합니다." + prior_note
             )
-        elif used_score <= -THRESHOLD_LIKELY:
+        elif used_score <= -THRESHOLD_UNAVAILABLE_NEG:
             final_status = "unavailable"
             final_confidence = max(final_confidence, 60)
             final_reason = (
