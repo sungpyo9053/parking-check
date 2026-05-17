@@ -24,6 +24,7 @@ from ..schemas.parking import (
 )
 from ..services.parking_fallback import collect_external_candidates
 from ..services.parking_search import latest_realtime_for_lots, nearby_parking_lots
+from ..services.self_parking_web import enrich_self_parking
 from ..services.recommendation import (
     classify_congestion,
     fee_summary,
@@ -170,12 +171,18 @@ def analyze(
 
     candidates.sort(key=lambda c: c.score, reverse=True)
 
-    self_parking = estimate_self_parking(
+    self_parking_base = estimate_self_parking(
         db,
         destination_name=dest_name,
         destination_address=dest_addr,
         lat=dest_lat,
         lng=dest_lng,
+    )
+    # 웹 검색 evidence 로 보강 (TAVILY 키/WEB_SEARCH_ENABLED 활성 시에만)
+    self_parking = enrich_self_parking(
+        self_parking_base,
+        dest_name=dest_name,
+        dest_addr=dest_addr,
     )
 
     # data_quality 휴리스틱
@@ -231,7 +238,7 @@ def analyze(
         lat=dest_lat,
         lng=dest_lng,
         radius_m=radius,
-        self_parking_unknown=self_parking.get("status") == "unknown",
+        self_parking_unknown=self_parking.status == "unknown",
     )
     external_candidates = list(fallback.evidence_items)
 
@@ -253,7 +260,7 @@ def analyze(
             lat=dest_lat,
             lng=dest_lng,
         ),
-        self_parking=SelfParking(**self_parking),
+        self_parking=self_parking,
         summary=summary,
         candidates=candidates,
         external_candidates=external_candidates,

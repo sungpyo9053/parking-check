@@ -357,3 +357,68 @@ button {
   color: var(--muted);
   margin: 4px 0 8px;
 }
+
+/* self-parking status emphasis */
+.self-status {
+  font-weight: 700;
+}
+.self-status-likely { color: var(--easy); }
+.self-status-available { color: var(--easy); }
+.self-status-uncertain { color: var(--moderate); }
+.self-status-unavailable { color: var(--risky); }
+.self-status-unknown { color: var(--muted); }
+
+.self-evidence {
+  margin-top: 6px;
+  font-size: 12px;
+}
+.self-evidence > summary {
+  cursor: pointer;
+  color: var(--brand);
+  user-select: none;
+  padding: 4px 0;
+}
+.evidence-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.evidence-item {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.evidence-head {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.evidence-title {
+  font-weight: 600;
+  color: var(--fg);
+  font-size: 12px;
+}
+.evidence-snippet {
+  color: var(--muted);
+  line-height: 1.5;
+}
+.evidence-keywords {
+  color: var(--easy);
+  font-size: 11px;
+  margin-top: 4px;
+}
+.evidence-link {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--brand);
+  font-size: 12px;
+}
+.tag-low { background: #e5e7eb; color: #374151; }
+.tag-medium { background: #fde68a; color: #92400e; }
+.tag-high { background: #bbf7d0; color: #14532d; }

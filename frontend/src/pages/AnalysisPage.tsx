@@ -5,9 +5,10 @@ import KakaoMap, { MapMarker } from "../components/KakaoMap";
 import ParkingCard from "../components/ParkingCard";
 import ExternalCard from "../components/ExternalCard";
 
-const SELF_LABEL = {
-  available: "자체 주차 가능성 높음",
-  uncertain: "자체 주차 불확실",
+const SELF_LABEL: Record<string, string> = {
+  available: "자체 주차 가능 (DB 매칭)",
+  likely: "자체 주차 가능성 높음 (웹 근거)",
+  uncertain: "자체 주차 가능성 불확실",
   unavailable: "자체 주차 어려움",
   unknown: "자체 주차 정보 부족"
 };
@@ -129,17 +130,55 @@ export default function AnalysisPage() {
           <div className="summary-card">
             <div className="row">
               <span className="label">자체 주차 가능성</span>
-              <span>
-                {SELF_LABEL[data.self_parking.status]}
-                {data.self_parking.status === "available" || data.self_parking.status === "uncertain"
-                  ? ` (${data.self_parking.confidence}점)`
-                  : ""}
+              <span className={`self-status self-status-${data.self_parking.status}`}>
+                {data.self_parking.label || SELF_LABEL[data.self_parking.status]}
+                {data.self_parking.confidence > 0 ? ` · ${data.self_parking.confidence}점` : ""}
               </span>
             </div>
             {data.self_parking.reason && (
               <div className="muted" style={{ fontSize: 12 }}>
                 {data.self_parking.reason}
               </div>
+            )}
+            {data.self_parking.warning && (
+              <div style={{ fontSize: 12, color: "#b85c00" }}>
+                ⚠ {data.self_parking.warning}
+              </div>
+            )}
+            {data.self_parking.evidence && data.self_parking.evidence.length > 0 && (
+              <details className="self-evidence">
+                <summary>
+                  자체 주차 근거 {data.self_parking.evidence.length}건 보기
+                </summary>
+                <ul className="evidence-list">
+                  {data.self_parking.evidence.map((e, i) => (
+                    <li key={`ev-${i}`} className="evidence-item">
+                      <div className="evidence-head">
+                        <span className={`tag tag-${e.confidence}`}>
+                          {e.source === "web_search" ? "웹" : e.source} · {e.confidence}
+                        </span>
+                        {e.title && <span className="evidence-title">{e.title}</span>}
+                      </div>
+                      {e.snippet && <div className="evidence-snippet">{e.snippet}</div>}
+                      {e.matched_keywords.length > 0 && (
+                        <div className="evidence-keywords">
+                          매칭: {e.matched_keywords.map(k => `「${k}」`).join(" ")}
+                        </div>
+                      )}
+                      {e.url && (
+                        <a
+                          className="evidence-link"
+                          href={e.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          근거 링크 보기 →
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </details>
             )}
             <div className="row">
               <span className="label">DB 등록 후보</span>

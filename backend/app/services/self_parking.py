@@ -38,7 +38,10 @@ def estimate_self_parking(
         return {
             "status": "unknown",
             "confidence": 0,
-            "reason": "목적지 주변 80m 이내 등록된 주차장 데이터가 없습니다.",
+            "reason": (
+                "공공데이터/지도 주차장 POI 기준으로는 80m 이내 별도 주차장 후보가 없습니다. "
+                "단, 매장 자체 주차 여부는 웹 검색 근거로 별도 판단합니다."
+            ),
             "matched_lot_id": None,
         }
 
@@ -81,8 +84,9 @@ def estimate_self_parking(
     nearby_count = len(candidates)
     if status == "unknown":
         reason = (
-            f"같은 주소의 부설주차장 데이터가 확인되지 않았습니다. "
-            f"다만 도보 5분 이내 대체 주차장이 {nearby_count}개 있습니다."
+            f"공공데이터/지도 POI 기준 같은 주소의 부설주차장은 확인되지 않았습니다. "
+            f"도보 5분 이내 대체 주차장 후보는 {nearby_count}개. "
+            f"매장 자체 주차 여부는 웹 검색 근거로 별도 판단합니다."
         )
         matched_id = None
     else:

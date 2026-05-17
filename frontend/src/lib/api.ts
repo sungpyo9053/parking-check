@@ -69,12 +69,7 @@ export type AnalyzeResponse = {
     lat: number;
     lng: number;
   };
-  self_parking: {
-    status: "available" | "uncertain" | "unavailable" | "unknown";
-    confidence: number;
-    reason: string | null;
-    matched_lot_id: number | null;
-  };
+  self_parking: SelfParking;
   summary: {
     nearby_count: number;
     nearest_distance_m: number | null;
@@ -92,6 +87,32 @@ export type AnalyzeResponse = {
     memo: string | null;
   }>;
   disclaimers: string[];
+};
+
+export type SelfParkingStatus =
+  | "available"
+  | "likely"
+  | "uncertain"
+  | "unavailable"
+  | "unknown";
+
+export type SelfParkingEvidence = {
+  source: string;
+  title: string | null;
+  url: string | null;
+  snippet: string | null;
+  matched_keywords: string[];
+  confidence: "low" | "medium" | "high";
+};
+
+export type SelfParking = {
+  status: SelfParkingStatus;
+  confidence: number;
+  label: string | null;
+  reason: string | null;
+  matched_lot_id: number | null;
+  evidence: SelfParkingEvidence[];
+  warning: string | null;
 };
 
 export type CandidateSource = "public_db" | "kakao_fallback" | "web_search";

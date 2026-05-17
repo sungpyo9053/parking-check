@@ -68,11 +68,34 @@ class Candidate(BaseModel):
     history: HistoryBlock | None = None
 
 
+SelfParkingStatus = Literal[
+    "available",  # DB 기준 같은 주소 부설주차장 확정
+    "likely",     # 웹 evidence 기반 자체 주차 가능 가능성 높음
+    "uncertain",  # 부분 매칭 / 약한 evidence
+    "unavailable",
+    "unknown",
+]
+
+
+class SelfParkingEvidence(BaseModel):
+    """자체 주차 판단 근거 1건. 주로 웹 검색 결과의 발췌."""
+
+    source: str  # "web_search" / "db_match" 등
+    title: str | None = None
+    url: str | None = None
+    snippet: str | None = None
+    matched_keywords: list[str] = []
+    confidence: Literal["low", "medium", "high"] = "low"
+
+
 class SelfParking(BaseModel):
-    status: Literal["available", "uncertain", "unavailable", "unknown"] = "unknown"
+    status: SelfParkingStatus = "unknown"
     confidence: int = 0
+    label: str | None = None
     reason: str | None = None
     matched_lot_id: int | None = None
+    evidence: list[SelfParkingEvidence] = []
+    warning: str | None = None
 
 
 class AnalyzeSummary(BaseModel):
