@@ -213,13 +213,6 @@ def analyze(
         lat=dest_lat,
         lng=dest_lng,
     )
-    # 웹 검색 evidence + 카테고리 prior 로 보강
-    self_parking = enrich_self_parking(
-        self_parking_base,
-        dest_name=dest_name,
-        dest_addr=dest_addr,
-        dest_category=dest_place.category if dest_place else None,
-    )
 
     # data_quality 휴리스틱
     with_rt = sum(1 for c in candidates if c.realtime)
@@ -274,9 +267,25 @@ def analyze(
         lat=dest_lat,
         lng=dest_lng,
         radius_m=radius,
-        self_parking_unknown=self_parking.status == "unknown",
+        self_parking_unknown=(self_parking_base.get("status") == "unknown"),
     )
     external_candidates = list(fallback.evidence_items)
+
+    # 외부 후보 중 '목적지명 일치(매장 자체 주차장)' 매칭 후보가 있으면
+    # self_parking 을 likely 로 격상 (Tavily/Naver evidence 0건이어도)
+    has_kakao_self = any(
+        any("목적지명" in r for r in c.usability_reasons)
+        for c in (external_candidates + (fallback.excluded_items or []))
+    )
+
+    # 웹 검색 evidence + 카테고리 prior + 카카오 자체 주차장 POI 매칭 으로 보강
+    self_parking = enrich_self_parking(
+        self_parking_base,
+        dest_name=dest_name,
+        dest_addr=dest_addr,
+        dest_category=dest_place.category if dest_place else None,
+        has_kakao_self_parking=has_kakao_self,
+    )
 
     if len(candidates) == 0 and len(external_candidates) == 0:
         disclaimers.append(

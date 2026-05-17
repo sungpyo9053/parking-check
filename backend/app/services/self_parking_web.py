@@ -301,6 +301,7 @@ def enrich_self_parking(
     dest_name: str | None,
     dest_addr: str | None,
     dest_category: str | None = None,
+    has_kakao_self_parking: bool = False,
 ) -> SelfParking:
     """estimate_self_parking() 의 dict 결과에 웹 evidence + 카테고리 prior 를 합쳐
     SelfParking 으로 반환.
@@ -316,6 +317,28 @@ def enrich_self_parking(
     web_score, evidences = collect_web_self_parking_evidence(dest_name, dest_addr)
     prior_score, prior_reason = category_prior(dest_category)
     combined_score = web_score + prior_score
+
+    # 카카오에 '{목적지명} 주차장' 같은 자체 주차장 POI 가 분류기에서 잡혔다면
+    # web evidence / 카테고리 prior 와 무관하게 likely 로 격상.
+    # (예: '아리차이 신림점' → 카카오에 '아리차이 신림점 주차장' 별도 등록.
+    # Tavily 가 evidence 0 건이어도 카카오 매칭만으로 충분히 강함.)
+    if (
+        has_kakao_self_parking
+        and (base.get("status") or "unknown") not in ("available", "unavailable")
+    ):
+        return SelfParking(
+            status="likely",
+            confidence=85,
+            label="자체 주차 가능성 높음 (지도 POI)",
+            reason=(
+                "카카오 지도에 매장 자체 주차장이 별도 POI 로 등록되어 있습니다. "
+                "추천 카드의 ⭐ 자체 주차장을 이용하세요."
+            ),
+            summary_natural=None,
+            matched_lot_id=base.get("matched_lot_id"),
+            evidence=evidences,
+            warning=_DEFAULT_WARNING,
+        )
 
     final_status: str = base_status
     final_confidence = base_confidence
