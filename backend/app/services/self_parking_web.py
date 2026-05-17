@@ -90,6 +90,60 @@ THRESHOLD_LIKELY = 55
 THRESHOLD_UNCERTAIN = 25
 
 
+# --- 카테고리 prior ---
+#
+# 카카오 places category 에는 백화점/쇼핑몰/시장/관광명소/거리 같은 분류가
+# 들어있다. 자체 주차 보유 사전 확률이 카테고리만으로도 강하게 갈리므로
+# (백화점/쇼핑몰은 거의 100% 자체 보유, 전통시장/거리는 거의 자체 없음)
+# evidence 점수와 합산하기 전에 prior 를 부여한다.
+_POS_CATEGORY_HINTS: dict[str, int] = {
+    "백화점": 60,
+    "쇼핑몰": 60,
+    "복합쇼핑": 60,
+    "아울렛": 55,
+    "할인점": 50,
+    "대형마트": 50,
+    "마트": 30,   # 일반 마트 (이마트/홈플러스/롯데마트 등)
+    "리조트": 45,
+    "호텔": 40,
+    "휴양림": 40,
+    "테마파크": 50,
+    "놀이공원": 50,
+    "수족관": 45,
+    "박물관": 30,
+    "전시관": 25,
+}
+
+_NEG_CATEGORY_HINTS: dict[str, int] = {
+    "전통시장": -35,
+    "재래시장": -35,
+    "골목시장": -30,
+    "관광명소": -20,
+    "거리": -20,    # XX거리 (가로수길/익선동 등)
+    "한옥마을": -25,
+    "한옥거리": -25,
+    "유적지": -15,
+    "사적지": -15,
+    "교회": -25,
+    "성당": -25,
+    "사찰": -20,
+    "지하상가": -30,
+}
+
+
+def category_prior(category: str | None) -> tuple[int, str | None]:
+    """카카오 places category 로 자체 주차 사전 점수 산정."""
+    if not category:
+        return 0, None
+    for kw, w in _POS_CATEGORY_HINTS.items():
+        if kw in category:
+            return w, f"카테고리({kw}) — 자체 주차 보유 가능성 매우 높음"
+    for kw, w in _NEG_CATEGORY_HINTS.items():
+        if kw in category:
+            return w, f"카테고리({kw}) — 매장 자체 주차 보통 없음/제한"
+    return 0, None
+
+
 def _norm(s: str | None) -> str:
     if not s:
         return ""
@@ -228,8 +282,10 @@ def enrich_self_parking(
     base: dict,
     dest_name: str | None,
     dest_addr: str | None,
+    dest_category: str | None = None,
 ) -> SelfParking:
-    """estimate_self_parking() 의 dict 결과에 웹 evidence 를 합쳐 SelfParking 으로 반환.
+    """estimate_self_parking() 의 dict 결과에 웹 evidence + 카테고리 prior 를 합쳐
+    SelfParking 으로 반환.
 
     base 가 이미 'available' (DB 부설주차장 강매칭) 이면 evidence 만 첨부하고
     status/confidence 는 유지한다. base 가 'unknown'/'uncertain' 일 때만 격상 후보.
@@ -240,43 +296,47 @@ def enrich_self_parking(
     matched_lot_id = base.get("matched_lot_id")
 
     web_score, evidences = collect_web_self_parking_evidence(dest_name, dest_addr)
+    prior_score, prior_reason = category_prior(dest_category)
+    combined_score = web_score + prior_score
 
     final_status: str = base_status
     final_confidence = base_confidence
     final_reason = base_reason
 
-    if base_status not in ("available", "unavailable") and evidences:
-        # 격상/하향 결정
-        if web_score >= THRESHOLD_LIKELY:
+    # 격상/하향 판단은 evidence 가 없어도 prior 만으로 가능하게.
+    has_signal = bool(evidences) or prior_score != 0
+    used_score = combined_score
+    if base_status not in ("available", "unavailable") and has_signal:
+        prior_note = f" 카테고리 prior: {prior_reason}." if prior_reason else ""
+        # 격상/하향 결정 (combined score 기준)
+        if used_score >= THRESHOLD_LIKELY:
             final_status = "likely"
-            final_confidence = max(final_confidence, min(95, 60 + web_score // 5))
+            final_confidence = max(final_confidence, min(95, 55 + used_score // 5))
             final_reason = (
-                "웹 검색 결과에서 매장 자체 주차 가능 정보가 확인되었습니다. "
-                "실시간/현장 상황은 확인이 필요합니다."
+                "웹 검색/카테고리 근거로 매장 자체 주차 가능성이 높게 추정됩니다. "
+                "실시간/현장 상황은 확인이 필요합니다." + prior_note
             )
-        elif web_score >= THRESHOLD_UNCERTAIN:
+        elif used_score >= THRESHOLD_UNCERTAIN:
             final_status = "uncertain"
             final_confidence = max(final_confidence, 35)
             final_reason = (
-                "웹 검색에서 주차 관련 단편 정보가 일부 확인되었습니다. "
-                "정확한 가능 여부는 매장 확인이 필요합니다."
+                "주차 관련 약한 긍정 신호가 확인됩니다. "
+                "정확한 가능 여부는 매장 확인이 필요합니다." + prior_note
             )
-        elif web_score <= -THRESHOLD_LIKELY:
+        elif used_score <= -THRESHOLD_LIKELY:
             final_status = "unavailable"
             final_confidence = max(final_confidence, 60)
-            # 인근 공영/민영 안내가 강하게 등장한 경우. '주차 못 한다' 가 아니라
-            # '매장 자체 주차는 없고 인근 이용 안내가 일관' 임을 명확히.
             final_reason = (
-                "웹 검색에서 인근 공영/민영 주차장 이용 안내가 일관되게 확인되었습니다. "
+                "웹 검색/카테고리 근거로 인근 주차장 이용 안내가 일관되게 확인됩니다. "
                 "매장 자체 주차장은 없거나 매우 제한적인 것으로 보입니다. "
-                "아래 추천된 외부 주차장 후보를 확인해 주세요."
+                "아래 추천된 외부 주차장 후보를 확인해 주세요." + prior_note
             )
-        elif web_score <= -THRESHOLD_UNCERTAIN:
+        elif used_score <= -THRESHOLD_UNCERTAIN:
             final_status = "uncertain"
             final_confidence = max(final_confidence, 30)
             final_reason = (
-                "웹 검색에서 인근 주차장 이용 안내가 일부 등장합니다. "
-                "매장 자체 주차 가능 여부는 방문 전 확인이 필요합니다."
+                "주차 관련 약한 부정 신호가 확인됩니다. "
+                "매장 자체 주차 가능 여부는 방문 전 확인이 필요합니다." + prior_note
             )
 
     label_map = {

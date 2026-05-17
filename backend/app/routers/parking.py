@@ -180,11 +180,12 @@ def analyze(
         lat=dest_lat,
         lng=dest_lng,
     )
-    # 웹 검색 evidence 로 보강 (TAVILY 키/WEB_SEARCH_ENABLED 활성 시에만)
+    # 웹 검색 evidence + 카테고리 prior 로 보강
     self_parking = enrich_self_parking(
         self_parking_base,
         dest_name=dest_name,
         dest_addr=dest_addr,
+        dest_category=dest_place.category if dest_place else None,
     )
 
     # data_quality 휴리스틱
