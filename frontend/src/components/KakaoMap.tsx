@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { loadKakaoSDK } from "../lib/kakao";
 import { openKakaoFootRoute } from "../lib/maps";
 
@@ -55,6 +55,10 @@ export default function KakaoMap({
   const mapRef = useRef<any>(null);
   const overlaysRef = useRef<any[]>([]);
   const popupRef = useRef<any>(null);
+  // SDK 로드 + Map 인스턴스 준비 완료 신호 — markers effect 의 의존성으로 사용해서
+  // race condition (data 가 SDK 보다 먼저 도착해 첫 markers effect 가 mapRef=null
+  // 로 빠지는 케이스) 방지
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,6 +70,7 @@ export default function KakaoMap({
           center: new k.maps.LatLng(center.lat, center.lng),
           level,
         });
+        setMapReady(true);
       })
       .catch(err => {
         if (!ref.current) return;
@@ -82,7 +87,7 @@ export default function KakaoMap({
     const k = window.kakao;
     if (!mapRef.current || !k) return;
     mapRef.current.setCenter(new k.maps.LatLng(center.lat, center.lng));
-  }, [center.lat, center.lng]);
+  }, [center.lat, center.lng, mapReady]);
 
   // 전역 핸들러 바인딩 (마운트 한 번)
   useEffect(() => {
@@ -108,7 +113,7 @@ export default function KakaoMap({
   // markers 변경 시 다시 그리기
   useEffect(() => {
     const k = window.kakao;
-    if (!mapRef.current || !k) return;
+    if (!mapReady || !mapRef.current || !k) return;
     overlaysRef.current.forEach(o => o.setMap(null));
     overlaysRef.current = [];
     if (popupRef.current) {
@@ -266,7 +271,7 @@ export default function KakaoMap({
       popup.setMap(map);
       popupRef.current = popup;
     }
-  }, [markers, destinationLat, destinationLng, destinationName]);
+  }, [markers, destinationLat, destinationLng, destinationName, mapReady]);
 
   return <div ref={ref} className="map-wrap" />;
 }
