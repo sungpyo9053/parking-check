@@ -169,6 +169,13 @@ def _build_summary(
             "현재 연결된 데이터 소스에서는 반경 내 주차장 후보를 찾지 못했습니다. "
             "카카오맵/현장 확인이 필요합니다."
         )
+    elif db_count == 0 and kakao_total > 0 and not web_executed and not web_enabled:
+        # 사용자가 가장 헷갈려하는 케이스: 주변 공영주차장은 있지만 목적지 자체
+        # 주차장 여부는 모름. 웹 검색을 켜야 그 답을 받을 수 있다는 힌트.
+        parts.append(
+            "(목적지 자체 주차장 여부는 웹 검색 폴백을 켜야 확인됩니다 — "
+            "서버 .env 의 TAVILY_API_KEY 와 WEB_SEARCH_ENABLED=true 를 설정.)"
+        )
 
     return " ".join(parts), warnings
 
@@ -184,11 +191,16 @@ def collect_external_candidates(
     lat: float,
     lng: float,
     radius_m: int,
+    self_parking_unknown: bool = False,
 ) -> FallbackInfo:
     """DB 결과를 받아 외부 폴백 후보를 수집해서 FallbackInfo 로 돌려준다.
 
     db_existing 은 DB 후보를 외부 후보 형태로 가벼이 표현한 리스트로,
     dedup 비교에만 사용된다.
+
+    self_parking_unknown 이 True 면 '주변에 공영주차장이 몇 개 보여도 목적지 자체
+    주차 가능성을 알 수 없다' 는 뜻이라 웹 검색까지 발화시킨다 (e.g. 카페/식당/매장
+    자체 주차장 정보는 보통 블로그/리뷰에만 있음).
     """
     info = FallbackInfo(
         db_count=db_count,
@@ -216,13 +228,26 @@ def collect_external_candidates(
         info.kakao_pk6_count = len(pk6_ext)
         external.extend(pk6_ext)
 
-        # 추가로 keyword 검색까지 — DB+PK6 합쳐도 부족할 때만
+        # 추가로 keyword 검색까지 — 좌표 기반, 목적지명 + "주차" 로 destination 자체
+        # 주차 관련 entry 를 우선 찾는다. destination_name 이 없거나 결과가 적으면
+        # 일반 "주차장" 으로 한 번 더 확장.
         if db_count + len(external) < MIN_DB:
-            try:
-                kw_docs = kakao_svc.search_keyword("주차장", size=10)
-            except kakao_svc.KakaoAPIError as e:
-                logger.warning("kakao keyword fallback failed: %s", e)
-                kw_docs = []
+            kw_docs: list[dict] = []
+            queries: list[str] = []
+            if destination_name:
+                queries.append(f"{destination_name} 주차")
+            queries.append("주차장")
+            for q in queries:
+                try:
+                    docs = kakao_svc.search_keyword_near(
+                        q, lat=lat, lng=lng, radius_m=max(radius_m, 1000), size=10
+                    )
+                except kakao_svc.KakaoAPIError as e:
+                    logger.warning("kakao keyword fallback failed q=%r: %s", q, e)
+                    docs = []
+                kw_docs.extend(docs)
+                if len(kw_docs) >= 10:
+                    break
             info.sources_tried.append("kakao_keyword")
             kw_ext = [
                 ec
@@ -241,8 +266,18 @@ def collect_external_candidates(
 
     kakao_total = info.kakao_pk6_count + info.kakao_keyword_count
 
-    # 웹 검색 폴백: DB + Kakao 합산이 임계 미만일 때만 시도
-    if db_count + kakao_total < WEB_FALLBACK_THRESHOLD and info.web_search_enabled:
+    # 웹 검색 폴백 트리거:
+    #   (a) DB + Kakao 합산이 임계 미만이거나
+    #   (b) 자체 주차 상태가 'unknown' (Kakao 가 PK6 로 인접 공영주차장만 잡고
+    #       정작 목적지 자체 주차 정보는 없는 흔한 케이스)
+    web_should_run = (
+        info.web_search_enabled
+        and (
+            db_count + kakao_total < WEB_FALLBACK_THRESHOLD
+            or self_parking_unknown
+        )
+    )
+    if web_should_run:
         info.sources_tried.append("web_search")
         info.web_search_executed = True
         try:

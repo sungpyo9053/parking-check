@@ -45,14 +45,20 @@ def build_queries(
     destination_name: str | None,
     destination_address: str | None,
 ) -> list[str]:
+    """목적지 자체 주차 여부를 우선 묻는 쿼리부터 일반 주변 주차 순으로 정렬."""
     name = (destination_name or "").strip()
     addr = (destination_address or "").strip()
     queries: list[str] = []
+    # 1순위: 목적지 자체 주차 여부 — 카페/식당/매장의 자체 주차장 정보는
+    # 보통 블로그 리뷰에 있음. "주차 가능" / "주차장 있나요" 같은 표현이 잘 잡힘.
+    if name and addr:
+        addr_short = " ".join(addr.split()[:3])
+        queries.append(f"{name} {addr_short} 주차")
     if name:
+        queries.append(f"{name} 주차 가능")
         queries.append(f"{name} 주차장")
-        queries.append(f"{name} 근처 주차")
+    # 2순위: 주소 기반 주변 주차
     if addr:
-        # 너무 긴 주소는 그대로는 노이즈가 됨 → 상위 4토큰만
         addr_short = " ".join(addr.split()[:4])
         queries.append(f"{addr_short} 주차장")
         local = _short_addr_token(addr)

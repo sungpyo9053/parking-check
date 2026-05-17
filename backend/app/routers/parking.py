@@ -231,6 +231,7 @@ def analyze(
         lat=dest_lat,
         lng=dest_lng,
         radius_m=radius,
+        self_parking_unknown=self_parking.get("status") == "unknown",
     )
     external_candidates = list(fallback.evidence_items)
 

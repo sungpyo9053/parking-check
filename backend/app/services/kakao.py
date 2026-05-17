@@ -36,6 +36,36 @@ def search_keyword(query: str, size: int = 10) -> list[dict]:
     return r.json().get("documents", [])
 
 
+def search_keyword_near(
+    query: str,
+    *,
+    lat: float,
+    lng: float,
+    radius_m: int = 1000,
+    size: int = 10,
+) -> list[dict]:
+    """좌표 기반 키워드 검색. 'X 주차' 같은 쿼리를 목적지 근처로 한정해서 호출."""
+    size = max(1, min(15, size))
+    radius_m = max(1, min(20000, radius_m))
+    params = {
+        "query": query,
+        "x": str(lng),
+        "y": str(lat),
+        "radius": radius_m,
+        "size": size,
+        "sort": "distance",
+    }
+    with httpx.Client(timeout=5.0) as client:
+        r = client.get(
+            f"{KAKAO_BASE}/search/keyword.json", headers=_headers(), params=params
+        )
+    if r.status_code != 200:
+        raise KakaoAPIError(
+            f"Kakao keyword(near) search failed: {r.status_code} {r.text}"
+        )
+    return r.json().get("documents", [])
+
+
 def search_parking_nearby(lat: float, lng: float, radius_m: int = 500, size: int = 15) -> list[dict]:
     """category_group_code=PK6 으로 주차장 카테고리 후보 검색 (보조용)."""
     radius_m = max(1, min(20000, radius_m))
