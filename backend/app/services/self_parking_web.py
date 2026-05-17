@@ -130,18 +130,44 @@ _BUILDING_PARKING_WEIGHT = 30
 _VALET_RE = _re.compile(r"발(?:렛|레)\s*파킹")
 _VALET_WEIGHT = 30
 
+# (P4) POI 인접 자체 주차: "매장 앞 (대형/전용/넓은) 주차장", "가게 앞에 바로 주차 가능"
+# — 한국어 후기 가장 흔한 자체 시그널. 기존 POSITIVE_KEYWORDS substring 매칭은
+# "매장 앞" 과 "주차장" 사이에 '대형/넓은' 형용사가 끼면 매칭 실패 → regex 로 대체.
+# 인근/근처(NEARBY) 와는 의미 다름.
+_FRONT_PARKING_RE = _re.compile(
+    r"(?:(?:매장|가게|식당|건물|입구|업장)\s*앞|바로\s*앞|매장\s*바로)"
+    r"(?:쪽|에는?|에서?|에도)?\s*"
+    r"(?:바로\s*)?(?:넓은|대형|전용|자체|넓고|큰)?\s*"
+    r"주차(?:장)?(?:이?\s*있|\s*가능|\s*공간|\s*이용|\s*OK|\s*완비)?"
+)
+_FRONT_PARKING_WEIGHT = 35
+
 
 # positive 키워드 직후 12자 이내에 부정 패턴이 오면 그 매칭을 무효화
 _NEGATION_AFTER = _re.compile(
-    r"(없었|없습|없어|없고|안\s*돼|안\s*됨|불가능|불가|어렵|힘들|힘듭|어려워|불가합)"
+    r"(없었|없습|없어|없고|없음|없는|안\s*돼|안\s*됨|안되|안됨|불가능|불가|어렵|힘들|힘듭|어려워|불가합)"
 )
 
 
-def _apply_regex(pattern: _re.Pattern, text: str, weight: int, label: str) -> tuple[int, list[str]]:
-    """패턴 매칭 누적 — 같은 패턴 여러 번 잡히면 누적."""
+def _apply_regex(
+    pattern: _re.Pattern,
+    text: str,
+    weight: int,
+    label: str,
+    check_negation: bool = False,
+) -> tuple[int, list[str]]:
+    """패턴 매칭 누적 — 같은 패턴 여러 번 잡히면 누적.
+
+    check_negation=True 면 매칭 직후 12자 안에 부정 단어가 오면 무효화 (positive regex 용).
+    """
     score = 0
     matched: list[str] = []
     for m in pattern.finditer(text):
+        if check_negation:
+            tail = text[m.end() : m.end() + 12]
+            if _NEGATION_AFTER.search(tail):
+                matched.append(f"[{label}] {m.group(0)[:25]}(부정문 무효)")
+                continue
         score += weight
         matched.append(f"[{label}] {m.group(0)[:25]}")
     return score, matched
@@ -288,13 +314,14 @@ def _score_text(text: str) -> tuple[int, list[str]]:
         neg_score += s
         matched.extend(m)
 
-    # regex 패턴 — positive (자체 시그널 일반화)
+    # regex 패턴 — positive (자체 시그널 일반화) — 부정문 후속 무효화 적용
     for pat, w, label in [
         (_FREE_PARKING_RE, _FREE_PARKING_WEIGHT, "무료주차제공"),
         (_BUILDING_PARKING_RE, _BUILDING_PARKING_WEIGHT, "건물/매장 주차"),
+        (_FRONT_PARKING_RE, _FRONT_PARKING_WEIGHT, "매장/가게 앞 주차"),
         (_VALET_RE, _VALET_WEIGHT, "발렛파킹"),
     ]:
-        s, m = _apply_regex(pat, text, w, label)
+        s, m = _apply_regex(pat, text, w, label, check_negation=True)
         pos_score += s
         matched.extend(m)
 
