@@ -96,13 +96,18 @@ export default function ExternalCard({ c, destinationLat, destinationLng, destin
           )}
         </div>
       )}
+      {!hasCoords && !isExcluded && (
+        <div className="meta meta-walk" style={{ color: "#9a3412" }}>
+          위치 정보가 없는 참고 후보입니다. 방문 전 매장 확인이 필요합니다.
+        </div>
+      )}
       {!isExcluded && (
         <div className="meta">
           <span>{kindLabel}</span>
           {(c.address || c.road_address) && <span>· {c.road_address || c.address}</span>}
         </div>
       )}
-      {!isExcluded && (
+      {!isExcluded && hasCoords && (
         <div className="meta muted">
           {c.fee_summary === "확인 필요" ? "요금 확인 필요" : `요금 ${c.fee_summary}`} ·{" "}
           {c.realtime_status === "실시간 정보 없음" ? "실시간 정보 없음" : c.realtime_status}

@@ -454,11 +454,18 @@ export default function AnalysisPage() {
   const destName = data?.destination.name || placeName || "목적지";
 
   // 추천 가능 / 확인 필요 / 추천 제외 분리
+  // 좌표 없는 외부 후보(매장 안내 페이지 등)는 추천 가능에서 빼고 '확인 필요' 로 격하
+  // — 도보 시간 계산 불가 & 진짜 주차장 POI 가 아닐 가능성.
+  const hasCoords = (e: ExternalCandidate) => e.lat != null && e.lng != null;
   const usableExt: ExternalCandidate[] = data
-    ? (data.external_candidates || []).filter(e => e.usability === "usable")
+    ? (data.external_candidates || []).filter(e => e.usability === "usable" && hasCoords(e))
     : [];
   const cautionExt: ExternalCandidate[] = data
-    ? (data.external_candidates || []).filter(e => e.usability === "caution")
+    ? (data.external_candidates || []).filter(
+        e =>
+          e.usability === "caution" ||
+          (e.usability === "usable" && !hasCoords(e))
+      )
     : [];
   const excluded: ExternalCandidate[] = data?.fallback?.excluded_items || [];
 
