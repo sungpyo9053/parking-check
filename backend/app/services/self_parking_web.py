@@ -315,14 +315,31 @@ def enrich_self_parking(
     has_signal = bool(evidences) or prior_score != 0
     used_score = combined_score
     if base_status not in ("available", "unavailable") and has_signal:
-        prior_note = f" 카테고리 prior: {prior_reason}." if prior_reason else ""
+        # 카테고리 prior 가 양수일 때만 reason 에 첨부 (음수 prior + likely 격상
+        # 시 모순된 reason 이 보이던 버그 — '카테고리(시장) 자체 주차 없음/제한' 이
+        # likely 카드에 따라붙던 문제)
+        prior_note = (
+            f" 카테고리 prior: {prior_reason}." if prior_reason and prior_score > 0 else ""
+        )
+        # 카테고리가 명백히 자체 주차 부재 시그널이면 (시장/거리/종교 -25 이하)
+        # web evidence 만으로 likely 까지 격상하지 않고 uncertain 으로 캡.
+        cap_at_uncertain = prior_score <= -25
         # 격상/하향 결정 (combined score 기준)
-        if used_score >= THRESHOLD_LIKELY:
+        if used_score >= THRESHOLD_LIKELY and not cap_at_uncertain:
             final_status = "likely"
             final_confidence = max(final_confidence, min(95, 55 + used_score // 5))
             final_reason = (
                 "웹 검색/카테고리 근거로 매장 자체 주차 가능성이 높게 추정됩니다. "
                 "실시간/현장 상황은 확인이 필요합니다." + prior_note
+            )
+        elif cap_at_uncertain and used_score >= THRESHOLD_UNCERTAIN:
+            final_status = "uncertain"
+            final_confidence = max(final_confidence, 45)
+            final_reason = (
+                "웹 검색에서 일부 긍정 신호가 있지만 카테고리상 "
+                f"({(prior_reason or '').split('—')[0].strip() or '해당 카테고리'}) "
+                "매장 자체 주차장은 보통 없거나 매우 제한적입니다. "
+                "인근 추천 주차장을 우선 검토하세요."
             )
         elif used_score >= THRESHOLD_UNCERTAIN:
             final_status = "uncertain"
