@@ -127,6 +127,7 @@ class ExternalCandidate(BaseModel):
     url: str | None = None
     snippet: str | None = None
     distance_m: int | None = None
+    walking_minutes: int | None = None  # 직선거리 기반 추정치 (70 m/min, 올림)
     lat: float | None = None
     lng: float | None = None
     address: str | None = None

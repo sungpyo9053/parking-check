@@ -42,8 +42,9 @@ export default function AnalysisPage() {
 
   const markers = useMemo<MapMarker[]>(() => {
     if (!data) return [];
-    const externalWithCoords = (data.external_candidates || []).filter(
-      e => e.lat != null && e.lng != null
+    // private_restricted (추천 제외) 는 지도에서 제외.
+    const externalForMap = (data.external_candidates || []).filter(
+      e => e.lat != null && e.lng != null && e.usability !== "private_restricted"
     );
     return [
       {
@@ -51,22 +52,36 @@ export default function AnalysisPage() {
         lat: data.destination.lat,
         lng: data.destination.lng,
         label: data.destination.name || placeName || "목적지",
-        kind: "destination"
+        kind: "destination" as const,
       },
       ...data.candidates.map<MapMarker>(c => ({
         id: String(c.id),
         lat: c.lat,
         lng: c.lng,
         label: c.name,
-        kind: "parking"
+        kind: "parking" as const,
+        detail: {
+          name: c.name,
+          usability: "usable",
+          usabilityLabel: "추천 가능",
+          distanceM: c.distance_m,
+          walkingMinutes: c.walk_minutes,
+        },
       })),
-      ...externalWithCoords.map<MapMarker>((e, i) => ({
+      ...externalForMap.map<MapMarker>((e, i) => ({
         id: `ext-${i}`,
         lat: e.lat as number,
         lng: e.lng as number,
         label: e.name,
-        kind: "parking"
-      }))
+        kind: "parking" as const,
+        detail: {
+          name: e.name,
+          usability: e.usability,
+          usabilityLabel: e.usability_label,
+          distanceM: e.distance_m,
+          walkingMinutes: e.walking_minutes,
+        },
+      })),
     ];
   }, [data, placeName]);
 
@@ -125,6 +140,9 @@ export default function AnalysisPage() {
           <KakaoMap
             center={{ lat: data.destination.lat, lng: data.destination.lng }}
             markers={markers}
+            destinationLat={data.destination.lat}
+            destinationLng={data.destination.lng}
+            destinationName={data.destination.name || placeName || "목적지"}
           />
 
           <div className="summary-card">
@@ -269,7 +287,14 @@ export default function AnalysisPage() {
                     <ul className="list">
                       {data.candidates.map(c => (
                         <li key={c.id}>
-                          <ParkingCard c={c} onSelect={startVisit} onOpenMap={openKakaoMap} />
+                          <ParkingCard
+                            c={c}
+                            onSelect={startVisit}
+                            onOpenMap={openKakaoMap}
+                            destinationLat={data.destination.lat}
+                            destinationLng={data.destination.lng}
+                            destinationName={data.destination.name || placeName || "목적지"}
+                          />
                         </li>
                       ))}
                     </ul>
@@ -288,6 +313,7 @@ export default function AnalysisPage() {
                             c={e}
                             destinationLat={data.destination.lat}
                             destinationLng={data.destination.lng}
+                            destinationName={data.destination.name || placeName || "목적지"}
                           />
                         </li>
                       ))}
@@ -307,6 +333,7 @@ export default function AnalysisPage() {
                             c={e}
                             destinationLat={data.destination.lat}
                             destinationLng={data.destination.lng}
+                            destinationName={data.destination.name || placeName || "목적지"}
                           />
                         </li>
                       ))}
@@ -326,6 +353,7 @@ export default function AnalysisPage() {
                             c={e}
                             destinationLat={data.destination.lat}
                             destinationLng={data.destination.lng}
+                            destinationName={data.destination.name || placeName || "목적지"}
                           />
                         </li>
                       ))}

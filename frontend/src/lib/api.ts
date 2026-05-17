@@ -127,6 +127,7 @@ export type ExternalCandidate = {
   url: string | null;
   snippet: string | null;
   distance_m: number | null;
+  walking_minutes: number | null;
   lat: number | null;
   lng: number | null;
   address: string | null;

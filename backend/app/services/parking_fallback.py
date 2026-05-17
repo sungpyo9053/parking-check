@@ -14,6 +14,7 @@ import math
 import re
 
 from ..schemas.parking import ExternalCandidate, FallbackInfo
+from ..utils.geo import walk_minutes_straight
 from . import kakao as kakao_svc
 from . import web_parking_search
 from .parking_classifier import classify_kakao_parking
@@ -96,6 +97,7 @@ def _kakao_doc_to_external(
         url=doc.get("place_url"),
         snippet=category or doc.get("address_name"),
         distance_m=dist,
+        walking_minutes=walk_minutes_straight(dist),
         lat=lat,
         lng=lng,
         address=doc.get("address_name"),

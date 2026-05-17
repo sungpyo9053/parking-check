@@ -1,9 +1,11 @@
 import type { ExternalCandidate } from "../lib/api";
+import { kakaoMapSearchUrl, openKakaoFootRoute } from "../lib/maps";
 
 type Props = {
   c: ExternalCandidate;
   destinationLat: number;
   destinationLng: number;
+  destinationName?: string;
 };
 
 function sourceBadgeClass(source: ExternalCandidate["source"]): string {
@@ -18,18 +20,26 @@ function usabilityBadgeClass(u: ExternalCandidate["usability"]): string {
   return "tag tag-excluded";
 }
 
-export default function ExternalCard({ c, destinationLat, destinationLng }: Props) {
+export default function ExternalCard({ c, destinationLat, destinationLng, destinationName }: Props) {
   const isWeb = c.source === "web_search";
+  const hasCoords = c.lat != null && c.lng != null;
 
   function openKakaoMapSearch() {
-    // 카카오맵에서 "주차장" 키워드 + 목적지 좌표 중심으로 열기
-    const url = `https://map.kakao.com/?q=${encodeURIComponent("주차장")}&map_type=TYPE_MAP&MX=${destinationLng}&MY=${destinationLat}&map_attribute=ROADVIEW`;
+    const url = kakaoMapSearchUrl("주차장", { lat: destinationLat, lng: destinationLng });
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
   function openSource() {
     if (!c.url) return;
     window.open(c.url, "_blank", "noopener,noreferrer");
+  }
+
+  function openFootRoute() {
+    if (c.lat == null || c.lng == null) return;
+    openKakaoFootRoute(
+      { lat: c.lat, lng: c.lng, name: c.name },
+      { lat: destinationLat, lng: destinationLng, name: destinationName || "목적지" }
+    );
   }
 
   const isExcluded = c.usability === "private_restricted";
@@ -62,6 +72,20 @@ export default function ExternalCard({ c, destinationLat, destinationLng }: Prop
         요금 {c.fee_summary} · {c.realtime_status}
       </div>
 
+      {hasCoords && c.walking_minutes != null && (
+        <div className="walk-block">
+          <div>이 주차장은 목적지 자체 주차장이 아닙니다.</div>
+          <div>
+            주차 후 목적지까지 <strong>직선거리 기준 도보 약 {c.walking_minutes}분</strong>
+            {c.distance_m != null ? ` (${c.distance_m}m)` : ""} 이동이 필요합니다.
+          </div>
+          <div className="muted" style={{ fontSize: 11 }}>
+            실제 도보 경로는 카카오맵에서 확인하세요.
+            도로/횡단보도/경사에 따라 달라질 수 있습니다.
+          </div>
+        </div>
+      )}
+
       <div className="reasons" style={{ color: "#b85c00" }}>
         ⚠ {c.warning}
       </div>
@@ -72,13 +96,18 @@ export default function ExternalCard({ c, destinationLat, destinationLng }: Prop
       )}
 
       <div className="actions">
+        {hasCoords && (
+          <button className="btn primary" onClick={openFootRoute}>
+            카카오맵 도보 길찾기
+          </button>
+        )}
         {c.url && (
           <button className="btn" onClick={openSource}>
             {isWeb ? "원문 보기" : "카카오맵에서 열기"}
           </button>
         )}
         <button className="btn" onClick={openKakaoMapSearch}>
-          카카오맵에서 주변 주차장 검색
+          주변 주차장 검색
         </button>
       </div>
     </div>

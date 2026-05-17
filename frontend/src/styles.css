@@ -455,3 +455,18 @@ button {
   color: var(--muted);
   user-select: none;
 }
+
+/* 도보 정보 블록 */
+.walk-block {
+  background: #f0f9ff;
+  border-left: 3px solid #0b6cff;
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin: 6px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #1e3a8a;
+}
+.walk-block strong {
+  color: #0b6cff;
+}
