@@ -1,6 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, DiscoverHotResponse, HotPlaceItem } from "../lib/api";
+import { api, AnalyzeResponse, DiscoverHotResponse, HotPlaceItem } from "../lib/api";
+
+type ParkingMini =
+  | { state: "loading" }
+  | { state: "error"; message: string }
+  | { state: "ok"; data: AnalyzeResponse };
+
+function selfBadge(status: string | undefined): { label: string; color: string; bg: string } {
+  if (status === "available") return { label: "자체 주차 가능", color: "#14532d", bg: "#bbf7d0" };
+  if (status === "likely") return { label: "자체 주차 가능성 높음", color: "#14532d", bg: "#bbf7d0" };
+  if (status === "uncertain") return { label: "자체 주차 불확실", color: "#9a3412", bg: "#fed7aa" };
+  if (status === "unavailable") return { label: "자체 주차 어려움", color: "#7f1d1d", bg: "#fecaca" };
+  return { label: "자체 주차 정보 부족", color: "#374151", bg: "#e5e7eb" };
+}
 
 type Category = "cafe" | "food" | "sights";
 
@@ -17,6 +30,45 @@ export default function DiscoverHot() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [active, setActive] = useState<Category | null>(null);
+  const [parkingByKey, setParkingByKey] = useState<Record<string, ParkingMini>>({});
+
+  // 핫플 결과가 바뀌면 각 매장 lat/lng 로 analyze 병렬 호출해서 주차 정보 채우기
+  useEffect(() => {
+    if (!data || data.items.length === 0) {
+      setParkingByKey({});
+      return;
+    }
+    const next: Record<string, ParkingMini> = {};
+    data.items.forEach((it, idx) => {
+      const k = `${idx}-${it.name}`;
+      next[k] = { state: "loading" };
+    });
+    setParkingByKey(next);
+
+    let cancelled = false;
+    Promise.all(
+      data.items.map((it, idx) =>
+        api
+          .analyze({ lat: it.lat, lng: it.lng, radius: 500 })
+          .then(d => ({ k: `${idx}-${it.name}`, ok: true as const, d }))
+          .catch(e => ({ k: `${idx}-${it.name}`, ok: false as const, e: e?.message || String(e) }))
+      )
+    ).then(results => {
+      if (cancelled) return;
+      setParkingByKey(prev => {
+        const out = { ...prev };
+        for (const r of results) {
+          out[r.k] = r.ok
+            ? { state: "ok", data: r.d }
+            : { state: "error", message: r.e };
+        }
+        return out;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [data]);
 
   function getLocation() {
     setError(null);
@@ -139,6 +191,63 @@ export default function DiscoverHot() {
               <div className="meta muted" style={{ fontSize: 11 }}>
                 hot score {it.hot_score}
               </div>
+
+              {/* 주차 미리보기 */}
+              {(() => {
+                const pk = parkingByKey[`${idx}-${it.name}`];
+                if (!pk) return null;
+                if (pk.state === "loading") {
+                  return (
+                    <div className="parking-mini muted" style={{ fontSize: 11 }}>
+                      ⏳ 주차 가능 여부 확인 중…
+                    </div>
+                  );
+                }
+                if (pk.state === "error") {
+                  return (
+                    <div className="parking-mini muted" style={{ fontSize: 11 }}>
+                      주차 정보 확인 실패 — {pk.message}
+                    </div>
+                  );
+                }
+                const sp = pk.data.self_parking;
+                const tr = pk.data.top_recommendation;
+                const b = selfBadge(sp?.status);
+                return (
+                  <div className="parking-mini">
+                    <div>
+                      <span
+                        className="tag"
+                        style={{ background: b.bg, color: b.color }}
+                      >
+                        {b.label}
+                      </span>
+                      {sp?.confidence != null && sp.confidence > 0 && (
+                        <span className="muted" style={{ fontSize: 11, marginLeft: 6 }}>
+                          ({sp.confidence}점)
+                        </span>
+                      )}
+                    </div>
+                    {tr ? (
+                      <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
+                        ⭐ 추천: <strong>{tr.candidate.name}</strong>
+                        {tr.candidate.walking_minutes != null && (
+                          <span> · 도보 약 {tr.candidate.walking_minutes}분</span>
+                        )}
+                      </div>
+                    ) : sp?.status === "available" || sp?.status === "likely" ? (
+                      <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
+                        매장 자체 주차로 해결
+                      </div>
+                    ) : (
+                      <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
+                        주변 추천 주차장 없음 — 분석 페이지에서 확인
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               <div className="actions">
                 <button className="btn primary" onClick={() => openInParking(it)}>
                   주차 분석

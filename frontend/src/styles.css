@@ -470,6 +470,18 @@ button {
   gap: 6px;
 }
 
+.parking-mini {
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.parking-mini strong {
+  color: var(--brand);
+}
+
 /* usability tier 카드 색상 */
 .tag-usable { background: #bbf7d0; color: #14532d; }
 .tag-caution { background: #fed7aa; color: #9a3412; }
