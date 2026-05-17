@@ -105,6 +105,12 @@ def score_external(c: ExternalCandidate) -> tuple[float, list[str]]:
         score += 10
         reasons.append("사용 가능 여부 확인 필요")
 
+    # 매장 자체 주차장(목적지명 매칭) 이면 어떤 외부 공영보다도 우선되어야 함
+    # (사용자 입장: 가까운 자체 두고 먼 공영 추천하지 마라)
+    if any("목적지명" in r for r in c.usability_reasons):
+        score += 100
+        reasons.append("매장 자체 주차장 매칭 — 최우선")
+
     ds = _distance_score(c.distance_m)
     if c.distance_m is not None:
         score += ds
