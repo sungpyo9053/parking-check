@@ -23,36 +23,66 @@ from . import web_parking_search
 logger = logging.getLogger(__name__)
 
 
-# 가중치는 단순. 한 evidence 당 positive 매칭 1건 = +30, 강한 매칭(전용주차장 등) = +40,
-# negative 매칭 = -25. 최종 점수가 임계를 넘으면 status 격상.
+# --- 가중치 룰 ---
+#
+# 단순 "주차 가능" 은 매장 자체 주차일 수도 있고 인근 공영 안내일 수도 있어서
+# 약한 시그널로만 본다. '자체' 주차임을 강하게 시사하는 표현 (전용주차장,
+# 매장 앞 주차, 건물 주차장 등) 만 강한 가중치를 준다. 반대로 '인근/근처 공영
+# 주차장 이용 가능' 류는 자체 주차 부재의 명확한 시그널이라 강한 negative.
 POSITIVE_KEYWORDS: dict[str, int] = {
+    # 강한 자체 주차 시그널
     "전용주차장": 40,
     "전용 주차": 40,
-    "무료 주차": 35,
-    "무료주차": 35,
-    "주차 가능": 30,
-    "주차가능": 30,
-    "주차공간 있음": 30,
-    "주차공간": 25,
-    "바로앞 주차": 30,
+    "건물 주차장": 35,
+    "건물에도 주차": 30,
     "매장 앞 주차": 30,
     "매장앞 주차": 30,
-    "주차 여러대": 25,
-    "주차장 있": 25,   # '주차장 있음', '주차장 있어요'
-    "주차장 있나": 5,  # 질문성은 약하게
+    "바로앞 주차": 30,
+    "지하 주차장": 25,
+    "지하주차장": 25,
+    "옥상 주차": 20,
+    # 중간
+    "무료 주차": 25,
+    "무료주차": 25,
+    "주차 여러대": 20,
+    "주차공간 있음": 20,
+    "주차공간 많": 20,
+    "주차장 있": 15,
+    # 약함 — '주차 가능' 단독은 인근 공영 안내와 구분 안 됨
+    "주차 가능": 8,
+    "주차가능": 8,
+    "주차공간": 8,
+    "주차장 있나": 3,
 }
 
 NEGATIVE_KEYWORDS: dict[str, int] = {
-    "주차 불가": -40,
-    "주차불가": -40,
-    "주차장 없음": -35,
-    "주차장이 없": -30,
-    "주차 어려": -25,
-    "주차 힘들": -25,
-    "주차 힘듦": -25,
-    "근처 공영주차장 이용": -15,  # 자체 주차 부재의 우회 표현
-    "주차 안 됨": -30,
-    "주차안됨": -30,
+    # 명확한 자체 부재 시그널
+    "주차 불가": -50,
+    "주차불가": -50,
+    "주차장 없음": -45,
+    "주차장이 없": -40,
+    "주차 안 됨": -35,
+    "주차안됨": -35,
+    "주차 어려": -30,
+    "주차 힘들": -30,
+    "주차 힘듦": -30,
+    # 인근 ~ 이용 = 자체 X (사용자 요구)
+    "인근 공영주차장 이용": -45,
+    "인근 공영주차장": -35,
+    "근처 공영주차장 이용": -45,
+    "근처 공영주차장": -35,
+    "주변 공영주차장": -30,
+    "인근 민영주차장": -35,
+    "인근 유료주차장": -30,
+    "인근 주차장 이용": -40,
+    "근처 주차장 이용": -40,
+    # 외부 주차장 추천 표현
+    "공영주차장 추천": -40,
+    "주차장 추천": -25,
+    "주차장 이용 권장": -35,
+    # 정량적인 외부 주차 안내 (예: "1시간 1,000원 할인" 같이 인근 제휴)
+    "공영 이용": -25,
+    "민영 이용": -25,
 }
 
 # 'likely' / 'uncertain' 격상 임계
@@ -92,21 +122,32 @@ def _name_or_addr_in_text(text: str, dest_name: str | None, dest_addr: str | Non
 
 
 def _score_text(text: str) -> tuple[int, list[str]]:
-    """텍스트에 등장한 키워드 가중치 합계와 매칭된 키워드 목록."""
+    """텍스트에 등장한 키워드 가중치 합계와 매칭된 키워드 목록.
+
+    같은 텍스트에 negative 시그널이 있으면 positive 의 기여를 절반으로 깎는다.
+    (예: "인근 공영주차장 이용 가능 ... 건물에도 주차 가능" 같이 인근 안내
+    문맥이 있으면 '주차 가능' 같은 약한 positive 는 자체 주차 근거로 보기 어려움.)
+    """
     if not text:
         return 0, []
-    score = 0
+    pos_score = 0
+    neg_score = 0
     matched: list[str] = []
     t = text.lower()
     for kw, weight in POSITIVE_KEYWORDS.items():
         if kw.lower() in t:
-            score += weight
+            pos_score += weight
             matched.append(kw)
     for kw, weight in NEGATIVE_KEYWORDS.items():
         if kw.lower() in t:
-            score += weight  # weight is negative
+            neg_score += weight  # weight is negative
             matched.append(kw)
-    return score, matched
+
+    if neg_score <= -25 and pos_score > 0:
+        # 인근 안내가 동반된 경우 positive 는 절반만 인정
+        pos_score = pos_score // 2
+
+    return pos_score + neg_score, matched
 
 
 def _evidence_confidence(score: int) -> str:
@@ -222,17 +263,20 @@ def enrich_self_parking(
             )
         elif web_score <= -THRESHOLD_LIKELY:
             final_status = "unavailable"
-            final_confidence = max(final_confidence, 55)
+            final_confidence = max(final_confidence, 60)
+            # 인근 공영/민영 안내가 강하게 등장한 경우. '주차 못 한다' 가 아니라
+            # '매장 자체 주차는 없고 인근 이용 안내가 일관' 임을 명확히.
             final_reason = (
-                "웹 검색에서 매장 자체 주차가 어렵다는 정보가 확인되었습니다. "
-                "주변 공영주차장 이용을 고려하세요."
+                "웹 검색에서 인근 공영/민영 주차장 이용 안내가 일관되게 확인되었습니다. "
+                "매장 자체 주차장은 없거나 매우 제한적인 것으로 보입니다. "
+                "아래 추천된 외부 주차장 후보를 확인해 주세요."
             )
         elif web_score <= -THRESHOLD_UNCERTAIN:
             final_status = "uncertain"
             final_confidence = max(final_confidence, 30)
             final_reason = (
-                "웹 검색에서 주차가 쉽지 않다는 단편이 일부 확인되었습니다. "
-                "방문 전 확인이 필요합니다."
+                "웹 검색에서 인근 주차장 이용 안내가 일부 등장합니다. "
+                "매장 자체 주차 가능 여부는 방문 전 확인이 필요합니다."
             )
 
     label_map = {
