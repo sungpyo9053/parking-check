@@ -6,10 +6,16 @@ type Props = {
   destinationLng: number;
 };
 
-function badgeClass(source: ExternalCandidate["source"]): string {
+function sourceBadgeClass(source: ExternalCandidate["source"]): string {
   if (source === "kakao_fallback") return "tag tag-kakao";
   if (source === "web_search") return "tag tag-web";
   return "tag";
+}
+
+function usabilityBadgeClass(u: ExternalCandidate["usability"]): string {
+  if (u === "usable") return "tag tag-usable";
+  if (u === "caution") return "tag tag-caution";
+  return "tag tag-excluded";
 }
 
 export default function ExternalCard({ c, destinationLat, destinationLng }: Props) {
@@ -26,11 +32,19 @@ export default function ExternalCard({ c, destinationLat, destinationLng }: Prop
     window.open(c.url, "_blank", "noopener,noreferrer");
   }
 
+  const isExcluded = c.usability === "private_restricted";
+
   return (
-    <div className="pcard pcard-external">
+    <div className={`pcard pcard-external pcard-${c.usability}`}>
       <div className="head">
-        <span className="name">{c.name}</span>
-        <span className={badgeClass(c.source)}>{c.source_label}</span>
+        <span className="name" style={isExcluded ? { textDecoration: "line-through", color: "#9ca3af" } : undefined}>
+          {c.name}
+        </span>
+        <span className={usabilityBadgeClass(c.usability)}>{c.usability_label}</span>
+      </div>
+
+      <div className="meta">
+        <span className={sourceBadgeClass(c.source)}>{c.source_label}</span>
       </div>
 
       {c.snippet && <div className="meta external-snippet">{c.snippet}</div>}
@@ -51,6 +65,11 @@ export default function ExternalCard({ c, destinationLat, destinationLng }: Prop
       <div className="reasons" style={{ color: "#b85c00" }}>
         ⚠ {c.warning}
       </div>
+      {c.usability_reasons.length > 0 && (
+        <div className="reasons muted" style={{ fontSize: 11 }}>
+          분류 근거: {c.usability_reasons.join(" · ")}
+        </div>
+      )}
 
       <div className="actions">
         {c.url && (

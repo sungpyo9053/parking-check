@@ -108,6 +108,7 @@ class AnalyzeSummary(BaseModel):
 # --- 외부(Kakao / Web Search) 폴백 후보 ---
 
 CandidateSource = Literal["public_db", "kakao_fallback", "web_search"]
+UsabilityTier = Literal["usable", "caution", "private_restricted"]
 
 
 class ExternalCandidate(BaseModel):
@@ -116,6 +117,7 @@ class ExternalCandidate(BaseModel):
     공통:
       - 실시간/요금/운영여부는 단정하지 않는다. fee_summary/realtime_status 는 "확인 필요" 고정.
       - source/source_label 로 카드 UI 구분.
+      - usability 로 추천/주의/제외 그룹 결정 (Kakao 후보에만 의미 있음).
     """
 
     source: CandidateSource
@@ -138,6 +140,9 @@ class ExternalCandidate(BaseModel):
     warning: str = (
         "웹 검색/외부 지도 기반 정보입니다. 운영 여부와 위치는 방문 전 확인이 필요합니다."
     )
+    usability: UsabilityTier = "usable"
+    usability_label: str = "추천 가능"
+    usability_reasons: list[str] = []
 
 
 class FallbackInfo(BaseModel):
@@ -155,6 +160,10 @@ class FallbackInfo(BaseModel):
     web_search_executed: bool = False
     sources_tried: list[str] = []
     evidence_items: list[ExternalCandidate] = []
+    excluded_items: list[ExternalCandidate] = []
+    usable_count: int = 0
+    caution_count: int = 0
+    excluded_count: int = 0
     summary: str | None = None
     warnings: list[str] = []
 

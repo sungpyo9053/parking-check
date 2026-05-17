@@ -16,6 +16,22 @@ import re
 from ..schemas.parking import ExternalCandidate, FallbackInfo
 from . import kakao as kakao_svc
 from . import web_parking_search
+from .parking_classifier import classify_kakao_parking
+
+_USABILITY_LABEL = {
+    "usable": "추천 가능",
+    "caution": "확인 필요",
+    "private_restricted": "추천 제외",
+}
+
+_RESTRICTED_WARNING = (
+    "타 매장/기관 전용 주차장으로 보여 추천에서 제외했습니다. "
+    "방문 목적지와 무관한 전용주차장은 임의 이용이 어려울 수 있습니다."
+)
+
+_CAUTION_WARNING = (
+    "사용 가능 여부 확인 필요. 유료 또는 일반 개방 주차장인지 현장/지도에서 한 번 더 확인해 주세요."
+)
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +68,7 @@ def _kakao_doc_to_external(
     source_label: str,
     origin_lat: float,
     origin_lng: float,
+    destination_name: str | None = None,
 ) -> ExternalCandidate | None:
     try:
         lat = float(doc["y"])
@@ -59,19 +76,35 @@ def _kakao_doc_to_external(
     except (KeyError, TypeError, ValueError):
         return None
     dist = _haversine_m(origin_lat, origin_lng, lat, lng)
+    name = (doc.get("place_name") or "이름 미상").strip() or "이름 미상"
+    category = doc.get("category_name")
+
+    tier, reasons = classify_kakao_parking(name, category, destination_name)
+
+    if tier == "private_restricted":
+        warning = _RESTRICTED_WARNING
+    elif tier == "caution":
+        warning = _CAUTION_WARNING
+    else:
+        warning = "지도 기반 정보입니다. 운영시간/요금은 방문 전 확인이 필요합니다."
+
     return ExternalCandidate(
         source=source,  # type: ignore[arg-type]
         source_label=source_label,
-        name=(doc.get("place_name") or "이름 미상").strip() or "이름 미상",
+        name=name,
         title=doc.get("place_name"),
         url=doc.get("place_url"),
-        snippet=doc.get("category_name") or doc.get("address_name"),
+        snippet=category or doc.get("address_name"),
         distance_m=dist,
         lat=lat,
         lng=lng,
         address=doc.get("address_name"),
         road_address=doc.get("road_address_name"),
-        category=doc.get("category_name"),
+        category=category,
+        usability=tier,  # type: ignore[arg-type]
+        usability_label=_USABILITY_LABEL[tier],
+        usability_reasons=reasons,
+        warning=warning,
     )
 
 
@@ -136,6 +169,7 @@ def _build_summary(
     web_count: int,
     web_enabled: bool,
     web_executed: bool,
+    excluded_count: int = 0,
 ) -> tuple[str, list[str]]:
     parts: list[str] = []
     warnings: list[str] = []
@@ -148,7 +182,13 @@ def _build_summary(
         parts.append(f"공공데이터 후보 {db_count}개를 찾았습니다.")
 
     if kakao_total > 0:
-        parts.append(f"카카오 지도 검색에서 보조 후보 {kakao_total}개를 추가했습니다.")
+        if excluded_count > 0:
+            parts.append(
+                f"카카오 지도 검색에서 보조 후보 {kakao_total}개 — 그 중 {excluded_count}개는 "
+                "타 매장/기관 전용 주차장으로 보여 추천에서 제외했습니다."
+            )
+        else:
+            parts.append(f"카카오 지도 검색에서 보조 후보 {kakao_total}개를 추가했습니다.")
         warnings.append("카카오 지도 결과는 실시간 잔여/요금/운영 여부 정보가 없습니다.")
 
     if web_executed:
@@ -221,7 +261,7 @@ def collect_external_candidates(
         pk6_ext = [
             ec
             for d in pk6
-            if (ec := _kakao_doc_to_external(d, "kakao_fallback", "카카오 지도 검색 기반", lat, lng))
+            if (ec := _kakao_doc_to_external(d, "kakao_fallback", "카카오 지도 검색 기반", lat, lng, destination_name))
             is not None
         ]
         pk6_ext = _dedup(db_existing + external, pk6_ext)
@@ -254,7 +294,7 @@ def collect_external_candidates(
                 for d in kw_docs
                 if (
                     ec := _kakao_doc_to_external(
-                        d, "kakao_fallback", "카카오 지도 검색 기반", lat, lng
+                        d, "kakao_fallback", "카카오 지도 검색 기반", lat, lng, destination_name
                     )
                 )
                 is not None
@@ -293,12 +333,28 @@ def collect_external_candidates(
         info.web_search_count = len(web_ext)
         external.extend(web_ext)
 
-    info.evidence_items = external
+    # usability 기준으로 표출/제외 분리.
+    # web_search 결과는 usability='usable' 기본값 (별도 필터 없음 — 텍스트 정보).
+    shown: list[ExternalCandidate] = []
+    excluded: list[ExternalCandidate] = []
+    for c in external:
+        if c.usability == "private_restricted":
+            excluded.append(c)
+        else:
+            shown.append(c)
+
+    info.evidence_items = shown
+    info.excluded_items = excluded
+    info.usable_count = sum(1 for c in shown if c.usability == "usable")
+    info.caution_count = sum(1 for c in shown if c.usability == "caution")
+    info.excluded_count = len(excluded)
+
     info.summary, info.warnings = _build_summary(
         db_count=db_count,
         kakao_total=kakao_total,
         web_count=info.web_search_count,
         web_enabled=info.web_search_enabled,
         web_executed=info.web_search_executed,
+        excluded_count=info.excluded_count,
     )
     return info

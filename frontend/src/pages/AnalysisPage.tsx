@@ -236,9 +236,16 @@ export default function AnalysisPage() {
 
           {(() => {
             const dbCount = data.candidates.length;
-            const extCount = data.external_candidates?.length ?? 0;
-            const total = dbCount + extCount;
-            if (total === 0) {
+            const ext = data.external_candidates || [];
+            const usableExt = ext.filter(e => e.usability === "usable");
+            const cautionExt = ext.filter(e => e.usability === "caution");
+            const excluded = data.fallback?.excluded_items || [];
+
+            const recommendCount = dbCount + usableExt.length;
+            const cautionCount = cautionExt.length;
+            const excludedCount = excluded.length;
+
+            if (recommendCount + cautionCount + excludedCount === 0) {
               return (
                 <p className="muted">
                   현재 연결된 데이터 소스에서는 반경 {radius}m 내 주차장 후보를 찾지 못했습니다.
@@ -248,7 +255,12 @@ export default function AnalysisPage() {
             }
             return (
               <>
-                <h2 className="h2">주차장 후보 {total}개</h2>
+                <h2 className="h2">
+                  추천 가능 후보 {recommendCount}개
+                  {cautionCount > 0 ? ` · 주의 ${cautionCount}개` : ""}
+                  {excludedCount > 0 ? ` · 제외 ${excludedCount}개` : ""}
+                </h2>
+
                 {dbCount > 0 && (
                   <>
                     <div className="section-sub">
@@ -263,14 +275,15 @@ export default function AnalysisPage() {
                     </ul>
                   </>
                 )}
-                {extCount > 0 && (
+
+                {usableExt.length > 0 && (
                   <>
                     <div className="section-sub">
-                      지도/웹 검색 기반 {extCount}개 · 운영/요금/실시간은 방문 전 확인 필요
+                      지도/웹 검색 기반 추천 {usableExt.length}개 · 운영/요금/실시간 확인 필요
                     </div>
                     <ul className="list">
-                      {data.external_candidates.map((e, i) => (
-                        <li key={`ext-${i}`}>
+                      {usableExt.map((e, i) => (
+                        <li key={`u-${i}`}>
                           <ExternalCard
                             c={e}
                             destinationLat={data.destination.lat}
@@ -280,6 +293,44 @@ export default function AnalysisPage() {
                       ))}
                     </ul>
                   </>
+                )}
+
+                {cautionExt.length > 0 && (
+                  <>
+                    <div className="section-sub" style={{ color: "#b85c00" }}>
+                      ⚠ 확인 필요 후보 {cautionExt.length}개 · 일반 개방 여부 확인 후 이용
+                    </div>
+                    <ul className="list">
+                      {cautionExt.map((e, i) => (
+                        <li key={`c-${i}`}>
+                          <ExternalCard
+                            c={e}
+                            destinationLat={data.destination.lat}
+                            destinationLng={data.destination.lng}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+
+                {excluded.length > 0 && (
+                  <details className="excluded-block">
+                    <summary>
+                      추천 제외 {excluded.length}개 보기 (타 매장/기관 전용 추정)
+                    </summary>
+                    <ul className="list" style={{ marginTop: 8 }}>
+                      {excluded.map((e, i) => (
+                        <li key={`x-${i}`}>
+                          <ExternalCard
+                            c={e}
+                            destinationLat={data.destination.lat}
+                            destinationLng={data.destination.lng}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
                 )}
               </>
             );

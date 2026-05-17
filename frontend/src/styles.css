@@ -422,3 +422,36 @@ button {
 .tag-low { background: #e5e7eb; color: #374151; }
 .tag-medium { background: #fde68a; color: #92400e; }
 .tag-high { background: #bbf7d0; color: #14532d; }
+
+/* usability tier 카드 색상 */
+.tag-usable { background: #bbf7d0; color: #14532d; }
+.tag-caution { background: #fed7aa; color: #9a3412; }
+.tag-excluded { background: #fecaca; color: #7f1d1d; }
+
+.pcard-usable {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.pcard-caution {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+.pcard-private_restricted {
+  background: #fef2f2;
+  border-color: #fecaca;
+  opacity: 0.85;
+}
+
+.excluded-block {
+  margin-top: 16px;
+  background: #fafafa;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.excluded-block > summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+  user-select: none;
+}

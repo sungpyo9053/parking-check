@@ -117,6 +117,8 @@ export type SelfParking = {
 
 export type CandidateSource = "public_db" | "kakao_fallback" | "web_search";
 
+export type UsabilityTier = "usable" | "caution" | "private_restricted";
+
 export type ExternalCandidate = {
   source: CandidateSource;
   source_label: string;
@@ -136,6 +138,9 @@ export type ExternalCandidate = {
   realtime_status: string;
   confidence: "low" | "medium" | "high";
   warning: string;
+  usability: UsabilityTier;
+  usability_label: string;
+  usability_reasons: string[];
 };
 
 export type FallbackInfo = {
@@ -147,6 +152,10 @@ export type FallbackInfo = {
   web_search_executed: boolean;
   sources_tried: string[];
   evidence_items: ExternalCandidate[];
+  excluded_items: ExternalCandidate[];
+  usable_count: number;
+  caution_count: number;
+  excluded_count: number;
   summary: string | null;
   warnings: string[];
 };
