@@ -37,10 +37,22 @@ _OPEN_OPERATOR_BRANDS = (
 
 
 def _distance_score(distance_m: int | None) -> float:
+    """거리 점수 — 가까운 곳 강하게 우선, 1km 이상은 페널티.
+
+    이전: 0~1000m 선형 0~40, 1km 넘으면 0. 멀리도 카테고리/source 보너스로
+    1위 되는 케이스 多 (잠실/롯데월드 등에서 1km+ 추천).
+    """
     if distance_m is None:
         return 0.0
-    d = min(max(distance_m, 0), 1000)
-    return 40.0 * (1 - d / 1000.0)
+    d = max(0, distance_m)
+    if d <= 100:
+        return 50.0  # 매우 가까움 — 거의 자체급
+    if d <= 1000:
+        # 100m → 50, 1000m → 5 선형 감산
+        return 50.0 - 45.0 * (d - 100) / 900.0
+    if d <= 1500:
+        return -10.0  # 1km~1.5km 약한 페널티
+    return -50.0  # 1.5km 이상 강한 페널티
 
 
 def _category_bonus(name: str, category: str | None) -> tuple[float, list[str]]:

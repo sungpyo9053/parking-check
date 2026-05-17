@@ -80,7 +80,9 @@ NEGATIVE_KEYWORDS: dict[str, int] = {
 # --- 일반 regex 패턴 (건바이건 키워드 추가 대신 패턴 인식) ---
 import re as _re
 
-# (1) 자체 주차 부재 선언: "전용/매장/건물/자체 + 주차장 + (따로) 없|불가|어렵"
+# === NEGATIVE 패턴 ===
+
+# (N1) 자체 주차 부재 선언: "전용/매장/건물/자체 + 주차장 + (따로) 없|불가|어렵"
 _SELF_NEGATION_RE = _re.compile(
     r"(?:전용\s*주차장?|매장\s*주차장?|건물\s*주차장?|자체\s*주차장?|"
     r"별도\s*주차장?|개별\s*주차장?)"
@@ -89,7 +91,7 @@ _SELF_NEGATION_RE = _re.compile(
 )
 _SELF_NEGATION_WEIGHT = -50
 
-# (2) 인근/도보 거리 주차장 안내: "인근|근처|주변|도보N분 + (공영/유료/민영/노상/타워/빌딩)? + 주차장 + 이용|있|추천"
+# (N2) 인근/도보 거리 주차장 안내
 _NEARBY_PARKING_RE = _re.compile(
     r"(?:인근|근처|주변|맞은편|"
     r"도보\s*\d+\s*분(?:\s*거리)?|"
@@ -97,21 +99,52 @@ _NEARBY_PARKING_RE = _re.compile(
     r"[^.!?\n]{0,15}?"
     r"(?:공영|민영|유료|노상|공용|공원)?\s*주차장?\s*(?:이용|있|추천)"
 )
-_NEARBY_PARKING_WEIGHT = -45
+_NEARBY_PARKING_WEIGHT = -50  # 이재모피자 회귀 보강 (-45 → -50)
 
-# (3) 매장이 추천하는 외부 유료/공영: 가격이나 할인 언급 + 주차장 = 제휴 인근
-_PAID_DISCOUNT_RE = _re.compile(
-    r"(?:[\d,]+\s*원\s*할인|\d+\s*시간\s*\d+\s*원|"
-    r"\d+\s*시간\s*무료\s*주차)"
+# (N3) 외부 주차장명 + 추천: "용두산공영주차장 추천", "OO유료주차장 추천"
+_EXTERNAL_RECOMMEND_RE = _re.compile(
+    r"[가-힣A-Za-z0-9]{2,15}(?:공영|민영|유료|노상)\s*주차장?\s*(?:추천|이용)"
 )
-# (3-1) 단, '매장 자체에서 N시간 무료 주차 가능' 같은 자체 시그널은 별도 처리 — 이 패턴은 negative 안 줌
-# 대신 인근 시그널과 동반 시 부정 강화 (contextual 처리에서 다룸)
+_EXTERNAL_RECOMMEND_WEIGHT = -35
+
+
+# === POSITIVE 패턴 (자체 시그널 일반화) ===
+
+# (P1) 시간 단위 무료 주차 제공 ("2시간 무료 주차" 등) — 자체/제휴 시그널
+_FREE_PARKING_RE = _re.compile(
+    r"\d+\s*시간(?:\s*\d+\s*분)?\s*(?:무료|지원)\s*주차"
+)
+_FREE_PARKING_WEIGHT = 30
+
+# (P2) 건물/매장/지하/옥상 + 주차: 매장 입점 건물 자체 주차 시그널
+# 예: "건물에 주차", "건물 내 주차", "건물 지하 주차", "지하에 주차", "매장에 주차"
+_BUILDING_PARKING_RE = _re.compile(
+    r"(?:건물\s*(?:내|지하|에서?|에도)|건물지하|"
+    r"매장\s*(?:내|에서?|에도)|매장내|"
+    r"지하(?:\s*\d+층)?\s*(?:에서?|주차장)|"
+    r"옥상\s*(?:에서?|주차장))\s*(?:주차|주차장)"
+)
+_BUILDING_PARKING_WEIGHT = 30
+
+# (P3) 발렛/발레 파킹: 매장 발레 서비스
+_VALET_RE = _re.compile(r"발(?:렛|레)\s*파킹")
+_VALET_WEIGHT = 30
 
 
 # positive 키워드 직후 12자 이내에 부정 패턴이 오면 그 매칭을 무효화
 _NEGATION_AFTER = _re.compile(
     r"(없었|없습|없어|없고|안\s*돼|안\s*됨|불가능|불가|어렵|힘들|힘듭|어려워|불가합)"
 )
+
+
+def _apply_regex(pattern: _re.Pattern, text: str, weight: int, label: str) -> tuple[int, list[str]]:
+    """패턴 매칭 누적 — 같은 패턴 여러 번 잡히면 누적."""
+    score = 0
+    matched: list[str] = []
+    for m in pattern.finditer(text):
+        score += weight
+        matched.append(f"[{label}] {m.group(0)[:25]}")
+    return score, matched
 
 # 'likely' / 'uncertain' 격상 임계
 THRESHOLD_LIKELY = 55
@@ -245,14 +278,25 @@ def _score_text(text: str) -> tuple[int, list[str]]:
             neg_score += weight
             matched.append(kw)
 
-    # regex 패턴 — 일반화된 negative 시그널
-    for m in _SELF_NEGATION_RE.finditer(text):
-        neg_score += _SELF_NEGATION_WEIGHT
-        matched.append(f"[자체부재] {m.group(0)[:25]}")
+    # regex 패턴 — negative (일반화)
+    for pat, w, label in [
+        (_SELF_NEGATION_RE, _SELF_NEGATION_WEIGHT, "자체부재"),
+        (_NEARBY_PARKING_RE, _NEARBY_PARKING_WEIGHT, "인근안내"),
+        (_EXTERNAL_RECOMMEND_RE, _EXTERNAL_RECOMMEND_WEIGHT, "외부추천"),
+    ]:
+        s, m = _apply_regex(pat, text, w, label)
+        neg_score += s
+        matched.extend(m)
 
-    for m in _NEARBY_PARKING_RE.finditer(text):
-        neg_score += _NEARBY_PARKING_WEIGHT
-        matched.append(f"[인근안내] {m.group(0)[:25]}")
+    # regex 패턴 — positive (자체 시그널 일반화)
+    for pat, w, label in [
+        (_FREE_PARKING_RE, _FREE_PARKING_WEIGHT, "무료주차제공"),
+        (_BUILDING_PARKING_RE, _BUILDING_PARKING_WEIGHT, "건물/매장 주차"),
+        (_VALET_RE, _VALET_WEIGHT, "발렛파킹"),
+    ]:
+        s, m = _apply_regex(pat, text, w, label)
+        pos_score += s
+        matched.extend(m)
 
     if neg_score <= -25 and pos_score > 0:
         pos_score = 0
