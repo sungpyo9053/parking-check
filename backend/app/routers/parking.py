@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import Place
+from ..models import Place, PlaceSelfParkingFeedback
 from ..schemas.parking import (
     AnalyzeResponse,
     AnalyzeSummary,
@@ -21,6 +21,7 @@ from ..schemas.parking import (
     NearbyResponse,
     RealtimeBlock,
     SelfParking,
+    SelfParkingFeedbackStats,
     TopRecommendation,
 )
 from ..services.external_recommender import pick_top_external
@@ -38,6 +39,28 @@ from ..services.visit_history import history_for_place, personal_stats_for_lots
 from ..utils.geo import walk_minutes
 
 router = APIRouter(prefix="/api/parking", tags=["parking"])
+
+
+def _self_parking_feedback_stats(db: Session, place_id: int) -> SelfParkingFeedbackStats:
+    rows = (
+        db.execute(
+            select(PlaceSelfParkingFeedback).where(
+                PlaceSelfParkingFeedback.place_id == place_id
+            )
+        )
+        .scalars()
+        .all()
+    )
+    yes = sum(1 for r in rows if r.answer == "yes")
+    no = sum(1 for r in rows if r.answer == "no")
+    unk = sum(1 for r in rows if r.answer == "unknown")
+    return SelfParkingFeedbackStats(
+        place_id=place_id,
+        yes_count=yes,
+        no_count=no,
+        unknown_count=unk,
+        total=len(rows),
+    )
 
 
 @router.get("/nearby", response_model=NearbyResponse)
@@ -296,6 +319,9 @@ def analyze(
         external_candidates=external_candidates,
         top_recommendation=top_rec,
         fallback=fallback,
+        self_parking_feedback_stats=(
+            _self_parking_feedback_stats(db, dest_place.id) if dest_place else None
+        ),
         history_for_destination=history_dest_rows,
         disclaimers=disclaimers,
     )

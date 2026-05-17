@@ -3,12 +3,17 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import Place
+from ..models import Place, PlaceSelfParkingFeedback
 from ..schemas.place import PlaceSearchItem, PlaceSearchResponse
+from ..schemas.self_parking_feedback import (
+    SelfParkingFeedbackCreate,
+    SelfParkingFeedbackItem,
+    SelfParkingFeedbackSummary,
+)
 from ..services.kakao import KakaoAPIError, search_keyword
 
 router = APIRouter(prefix="/api/places", tags=["places"])
@@ -82,3 +87,71 @@ def places_search(
 
     db.commit()
     return PlaceSearchResponse(items=items)
+
+
+# --- 자체 주차 사용자 피드백 ---
+
+@router.post(
+    "/{place_id}/self-parking-feedback",
+    response_model=SelfParkingFeedbackItem,
+    status_code=201,
+)
+def submit_self_parking_feedback(
+    place_id: int,
+    body: SelfParkingFeedbackCreate,
+    db: Session = Depends(get_db),
+) -> SelfParkingFeedbackItem:
+    place: Place | None = db.execute(
+        select(Place).where(Place.id == place_id)
+    ).scalar_one_or_none()
+    if place is None:
+        raise HTTPException(status_code=404, detail="place_id not found")
+
+    row = PlaceSelfParkingFeedback(
+        place_id=place_id,
+        answer=body.answer,
+        note=(body.note or None),
+        user_token=(body.user_token or None),
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return SelfParkingFeedbackItem(
+        id=row.id,
+        place_id=row.place_id,
+        answer=row.answer,  # type: ignore[arg-type]
+        note=row.note,
+        created_at=row.created_at,
+    )
+
+
+@router.get(
+    "/{place_id}/self-parking-feedback/summary",
+    response_model=SelfParkingFeedbackSummary,
+)
+def self_parking_feedback_summary(
+    place_id: int,
+    db: Session = Depends(get_db),
+) -> SelfParkingFeedbackSummary:
+    rows = (
+        db.execute(
+            select(PlaceSelfParkingFeedback)
+            .where(PlaceSelfParkingFeedback.place_id == place_id)
+            .order_by(PlaceSelfParkingFeedback.created_at.desc())
+        )
+        .scalars()
+        .all()
+    )
+    yes = sum(1 for r in rows if r.answer == "yes")
+    no = sum(1 for r in rows if r.answer == "no")
+    unk = sum(1 for r in rows if r.answer == "unknown")
+    last = rows[0] if rows else None
+    return SelfParkingFeedbackSummary(
+        place_id=place_id,
+        yes_count=yes,
+        no_count=no,
+        unknown_count=unk,
+        total=len(rows),
+        last_answer=last.answer if last else None,  # type: ignore[arg-type]
+        last_at=last.created_at if last else None,
+    )

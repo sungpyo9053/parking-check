@@ -423,6 +423,37 @@ button {
 .tag-medium { background: #fde68a; color: #92400e; }
 .tag-high { background: #bbf7d0; color: #14532d; }
 
+/* 자체 주차 사용자 피드백 위젯 */
+.sp-feedback {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.sp-feedback-q {
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.sp-feedback-buttons {
+  display: flex;
+  gap: 6px;
+}
+.sp-feedback-buttons .btn {
+  padding: 6px 10px;
+  font-size: 12px;
+  flex: 1;
+}
+.sp-feedback .sp-yes { border-color: #16a34a; color: #14532d; }
+.sp-feedback .sp-no  { border-color: #dc2626; color: #7f1d1d; }
+.sp-feedback .sp-unk { border-color: #9ca3af; color: #374151; }
+.sp-feedback-stats {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 /* usability tier 카드 색상 */
 .tag-usable { background: #bbf7d0; color: #14532d; }
 .tag-caution { background: #fed7aa; color: #9a3412; }

@@ -1,6 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { api, AnalyzeResponse, Candidate } from "../lib/api";
+import { api, AnalyzeResponse, Candidate, SelfParkingFeedbackStats } from "../lib/api";
+
+// 익명 클라이언트 토큰 (피드백 중복 측정용)
+function getUserToken(): string {
+  try {
+    const k = "pk_user_token";
+    let v = localStorage.getItem(k);
+    if (!v) {
+      v = (crypto?.randomUUID?.() ?? `u-${Date.now()}-${Math.random()}`).slice(0, 40);
+      localStorage.setItem(k, v);
+    }
+    return v;
+  } catch {
+    return "anon";
+  }
+}
 import KakaoMap, { MapMarker } from "../components/KakaoMap";
 import ParkingCard from "../components/ParkingCard";
 import ExternalCard from "../components/ExternalCard";
@@ -25,6 +40,33 @@ export default function AnalysisPage() {
   const [radius, setRadius] = useState<number>(500);
   const [data, setData] = useState<AnalyzeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const [feedbackStats, setFeedbackStats] = useState<SelfParkingFeedbackStats | null>(null);
+  const [feedbackJustSent, setFeedbackJustSent] = useState<"yes" | "no" | "unknown" | null>(null);
+
+  async function sendFeedback(answer: "yes" | "no" | "unknown") {
+    if (!data?.destination.place_id) return;
+    setFeedbackBusy(true);
+    try {
+      await api.submitSelfParkingFeedback(data.destination.place_id, {
+        answer,
+        user_token: getUserToken(),
+      });
+      const sum = await api.selfParkingFeedbackSummary(data.destination.place_id);
+      setFeedbackStats({
+        place_id: sum.place_id,
+        yes_count: sum.yes_count,
+        no_count: sum.no_count,
+        unknown_count: sum.unknown_count,
+        total: sum.total,
+      });
+      setFeedbackJustSent(answer);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setFeedbackBusy(false);
+    }
+  }
 
   useEffect(() => {
     setError(null);
@@ -38,7 +80,14 @@ export default function AnalysisPage() {
       setError("place_id 또는 lat+lng 가 필요합니다.");
       return;
     }
-    api.analyze(params).then(setData).catch(e => setError(e.message));
+    api
+      .analyze(params)
+      .then(d => {
+        setData(d);
+        setFeedbackStats(d.self_parking_feedback_stats);
+        setFeedbackJustSent(null);
+      })
+      .catch(e => setError(e.message));
   }, [place_id, lat, lng, radius]);
 
   const markers = useMemo<MapMarker[]>(() => {
@@ -162,6 +211,40 @@ export default function AnalysisPage() {
             {data.self_parking.warning && (
               <div style={{ fontSize: 12, color: "#b85c00" }}>
                 ⚠ {data.self_parking.warning}
+              </div>
+            )}
+            {data.destination.place_id && (
+              <div className="sp-feedback">
+                <div className="sp-feedback-q">실제로 자체 주차 가능했나요?</div>
+                <div className="sp-feedback-buttons">
+                  <button
+                    className="btn sp-yes"
+                    disabled={feedbackBusy}
+                    onClick={() => sendFeedback("yes")}
+                  >
+                    ✓ 있었음
+                  </button>
+                  <button
+                    className="btn sp-no"
+                    disabled={feedbackBusy}
+                    onClick={() => sendFeedback("no")}
+                  >
+                    ✗ 없었음
+                  </button>
+                  <button
+                    className="btn sp-unk"
+                    disabled={feedbackBusy}
+                    onClick={() => sendFeedback("unknown")}
+                  >
+                    ? 모름
+                  </button>
+                </div>
+                {(feedbackStats?.total ?? 0) > 0 && (
+                  <div className="sp-feedback-stats">
+                    누적 응답 {feedbackStats?.total}: ✓ {feedbackStats?.yes_count} · ✗ {feedbackStats?.no_count} · ? {feedbackStats?.unknown_count}
+                    {feedbackJustSent && <span style={{ color: "#16a34a" }}> · 응답 저장됨</span>}
+                  </div>
+                )}
               </div>
             )}
             {data.self_parking.evidence && data.self_parking.evidence.length > 0 && (

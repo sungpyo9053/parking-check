@@ -137,3 +137,20 @@ CREATE TABLE IF NOT EXISTS parking_feedbacks (
 );
 
 CREATE INDEX IF NOT EXISTS ix_feedbacks_lot ON parking_feedbacks (parking_lot_id);
+
+-- ---------------------------------------------------------------------------
+-- place_self_parking_feedback (사용자가 직접 답하는 자체 주차 ground truth)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS place_self_parking_feedback (
+    id          BIGSERIAL PRIMARY KEY,
+    place_id    BIGINT REFERENCES places(id) ON DELETE CASCADE,
+    answer      TEXT NOT NULL,   -- 'yes' | 'no' | 'unknown'
+    note        TEXT,
+    user_token  TEXT,            -- 익명 클라이언트 토큰 (브라우저 localStorage)
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS ix_sp_feedback_place
+    ON place_self_parking_feedback (place_id);
+CREATE INDEX IF NOT EXISTS ix_sp_feedback_created
+    ON place_self_parking_feedback (created_at DESC);

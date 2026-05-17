@@ -185,6 +185,14 @@ class HistoryForDestination(BaseModel):
     memo: str | None
 
 
+class SelfParkingFeedbackStats(BaseModel):
+    place_id: int | None = None
+    yes_count: int = 0
+    no_count: int = 0
+    unknown_count: int = 0
+    total: int = 0
+
+
 class TopRecommendation(BaseModel):
     """자체 주차 불가능/모름일 때, 외부 후보 중 가중치 1위 1개를 강조 표시.
 
@@ -206,5 +214,6 @@ class AnalyzeResponse(BaseModel):
     external_candidates: list[ExternalCandidate] = []
     top_recommendation: TopRecommendation | None = None
     fallback: FallbackInfo | None = None
+    self_parking_feedback_stats: SelfParkingFeedbackStats | None = None
     history_for_destination: list[HistoryForDestination] = []
     disclaimers: list[str] = []

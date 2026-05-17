@@ -80,6 +80,7 @@ export type AnalyzeResponse = {
   external_candidates: ExternalCandidate[];
   top_recommendation: TopRecommendation | null;
   fallback: FallbackInfo | null;
+  self_parking_feedback_stats: SelfParkingFeedbackStats | null;
   history_for_destination: Array<{
     visit_id: number;
     selected_parking_name: string | null;
@@ -143,6 +144,14 @@ export type ExternalCandidate = {
   usability: UsabilityTier;
   usability_label: string;
   usability_reasons: string[];
+};
+
+export type SelfParkingFeedbackStats = {
+  place_id: number | null;
+  yes_count: number;
+  no_count: number;
+  unknown_count: number;
+  total: number;
 };
 
 export type TopRecommendation = {
@@ -229,5 +238,19 @@ export const api = {
   visitsByParkingLot: (parking_lot_id: number) =>
     request<{ count: number; items: Visit[] }>(
       `/api/visits/by-parking-lot?parking_lot_id=${parking_lot_id}`
+    ),
+
+  submitSelfParkingFeedback: (
+    place_id: number,
+    body: { answer: "yes" | "no" | "unknown"; note?: string; user_token?: string }
+  ) =>
+    request<{ id: number; place_id: number | null; answer: string; created_at: string }>(
+      `/api/places/${place_id}/self-parking-feedback`,
+      { method: "POST", body: JSON.stringify(body) }
+    ),
+
+  selfParkingFeedbackSummary: (place_id: number) =>
+    request<SelfParkingFeedbackStats & { last_answer: string | null; last_at: string | null }>(
+      `/api/places/${place_id}/self-parking-feedback/summary`
     )
 };
