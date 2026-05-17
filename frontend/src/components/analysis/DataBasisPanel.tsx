@@ -1,4 +1,6 @@
-export default function DataSourceFold() {
+/** 분석 결과 하단의 "데이터 기준" 접기 영역.
+ *  내부 용어(parking_lots / fallback / Tavily 등) 없이 사용자 문구만 노출. */
+export default function DataBasisPanel() {
   return (
     <details className="data-source">
       <summary>데이터 기준</summary>

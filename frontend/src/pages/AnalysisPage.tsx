@@ -1,20 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import {
-  api,
+import { api } from "../lib/api";
+import type {
   AnalyzeResponse,
   Candidate,
   ExternalCandidate,
   SelfParkingFeedbackStats,
-} from "../lib/api";
+} from "../types/parking";
 import KakaoMap, { MapMarker } from "../components/KakaoMap";
-import AnalysisTopBar from "../components/analysis/AnalysisTopBar";
-import TopRecCard from "../components/analysis/TopRecCard";
+import AnalysisHeader from "../components/analysis/AnalysisHeader";
+import VerdictCard from "../components/analysis/VerdictCard";
+import AnalysisBottomSheet, {
+  SheetState,
+} from "../components/analysis/AnalysisBottomSheet";
+import TopRecommendationCard from "../components/analysis/TopRecommendationCard";
 import SelfParkingCard from "../components/analysis/SelfParkingCard";
 import MenuCard from "../components/analysis/MenuCard";
-import CandidateSections from "../components/analysis/CandidateSections";
-import DataSourceFold from "../components/analysis/DataSourceFold";
-import { buildVerdict, selfParkingCopy } from "../lib/verdict";
+import ParkingCandidateSection from "../components/analysis/ParkingCandidateSection";
+import DataBasisPanel from "../components/analysis/DataBasisPanel";
+import { buildVerdict, selfParkingCopy } from "../utils/parkingPresentation";
 import { isFavorite, toggleFavorite } from "../lib/favorites";
 import { getGroup } from "../lib/favoritesGroup";
 import { sharePage } from "../lib/share";
@@ -36,8 +40,6 @@ function getUserToken(): string {
   }
 }
 
-type SheetState = "peek" | "half" | "expanded";
-
 export default function AnalysisPage() {
   const [sp] = useSearchParams();
   const navigate = useNavigate();
@@ -58,7 +60,6 @@ export default function AnalysisPage() {
   const [fav, setFav] = useState(false);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const [sheetState, setSheetState] = useState<SheetState>("half");
-  const sheetBodyRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!data) return;
@@ -140,11 +141,7 @@ export default function AnalysisPage() {
     const bits: string[] = [v.title];
     if (top) {
       bits.push(
-        `추천: ${top.name}${
-          top.walking_minutes != null
-            ? ` (도보 약 ${top.walking_minutes}분)`
-            : ""
-        }`,
+        `추천: ${top.name}${top.walking_minutes != null ? ` (도보 약 ${top.walking_minutes}분)` : ""}`,
       );
     }
     const url = `${window.location.origin}${window.location.pathname}${window.location.search}`;
@@ -209,7 +206,8 @@ export default function AnalysisPage() {
       .catch((e) => setError(e.message));
   }, [place_id, lat, lng, radius]);
 
-  // 마커: 목적지 + 추천(P1) + 거리순으로 P2, P3, ... 라벨 부여
+  // 마커: 목적지 + 추천(P1) + 거리순으로 P2, P3, ... 짧은 라벨만 표시.
+  // 전체 이름은 마커 클릭 시 KakaoMap 의 팝업에서 보여준다.
   const markers = useMemo<MapMarker[]>(() => {
     if (!data) return [];
     const externalForMap = (data.external_candidates || []).filter(
@@ -228,7 +226,7 @@ export default function AnalysisPage() {
         lat: data.destination.lat,
         lng: data.destination.lng,
         label: "목적지",
-        kind: "destination" as const,
+        kind: "destination",
       },
     ];
     if (tr && recLat != null && recLng != null) {
@@ -237,7 +235,7 @@ export default function AnalysisPage() {
         lat: recLat,
         lng: recLng,
         label: "P1",
-        kind: "recommended" as const,
+        kind: "recommended",
         detail: {
           name: tr.candidate.name,
           usability: "usable",
@@ -258,7 +256,7 @@ export default function AnalysisPage() {
           lat: c.lat,
           lng: c.lng,
           label: `P${pn++}`,
-          kind: "parking" as const,
+          kind: "parking",
           detail: {
             name: c.name,
             usability: "usable",
@@ -275,7 +273,7 @@ export default function AnalysisPage() {
           lat: e.lat as number,
           lng: e.lng as number,
           label: `P${pn++}`,
-          kind: "parking" as const,
+          kind: "parking",
           detail: {
             name: e.name,
             usability: e.usability,
@@ -319,20 +317,6 @@ export default function AnalysisPage() {
       .catch((e) => setError(e.message));
   }
 
-  function openKakaoMap(c: Candidate) {
-    const dest = data?.destination;
-    if (!dest) return;
-    const url = `https://map.kakao.com/?map_type=TYPE_MAP&target=other&rt=,,${dest.lng},${dest.lat}&rt2=${encodeURIComponent(c.name)}`;
-    window.open(url, "_blank");
-  }
-
-  function cycleSheet() {
-    setSheetState((s) =>
-      s === "peek" ? "half" : s === "half" ? "expanded" : "peek",
-    );
-    if (sheetBodyRef.current) sheetBodyRef.current.scrollTop = 0;
-  }
-
   const verdict = data ? buildVerdict(data) : null;
   const selfCopy = data ? selfParkingCopy(data) : null;
   const dest = data?.destination;
@@ -355,28 +339,17 @@ export default function AnalysisPage() {
 
   return (
     <div className="analyze-screen">
-      <AnalysisTopBar
+      <AnalysisHeader
         title={placeName || data?.destination.name || "분석"}
         address={data?.destination.address}
         fav={fav}
         shareMsg={shareMsg}
+        radius={radius}
         onBack={() => navigate(-1)}
         onToggleFav={toggleFav}
         onShare={doShare}
+        onChangeRadius={setRadius}
       />
-
-      <div className="analyze-chips">
-        {[300, 500, 1000].map((r) => (
-          <button
-            key={r}
-            type="button"
-            className={`chip ${radius === r ? "chip-active" : ""}`}
-            onClick={() => setRadius(r)}
-          >
-            {r >= 1000 ? `${r / 1000}km` : `${r}m`}
-          </button>
-        ))}
-      </div>
 
       <div className="analyze-map">
         {dest && (
@@ -395,85 +368,69 @@ export default function AnalysisPage() {
       {!data && !error && <div className="analyze-loading">분석 중...</div>}
 
       {data && verdict && selfCopy && dest && (
-        <section
-          className={`sheet sheet-${sheetState}`}
-          aria-label="주차 판단 패널"
-        >
-          <button
-            type="button"
-            className="sheet-handle-btn"
-            onClick={cycleSheet}
-            aria-label="패널 펼치기/접기"
-          >
-            <div className="sheet-handle-bar" />
-          </button>
+        <AnalysisBottomSheet
+          state={sheetState}
+          onChangeState={setSheetState}
+          peek={<VerdictCard verdict={verdict} />}
+          body={
+            <>
+              {verdict.hint && (
+                <div className="verdict-hint-inline">{verdict.hint}</div>
+              )}
 
-          <div className="sheet-peek-area">
-            <div className={`verdict-pill verdict-pill-${verdict.kind}`}>
-              <span className="verdict-pill-q">차 가져가도 될까?</span>
-              <span className="verdict-pill-title">{verdict.title}</span>
-            </div>
-            <div className="verdict-pill-detail">{verdict.detail}</div>
-          </div>
+              <TopRecommendationCard data={data} destName={destName} />
 
-          <div className="sheet-body" ref={sheetBodyRef}>
-            {verdict.hint && (
-              <div className="verdict-hint-inline">{verdict.hint}</div>
-            )}
+              <SelfParkingCard
+                data={data}
+                copy={selfCopy}
+                feedbackBusy={feedbackBusy}
+                feedbackStats={feedbackStats}
+                feedbackJustSent={feedbackJustSent}
+                onFeedback={sendFeedback}
+              />
 
-            <TopRecCard data={data} destName={destName} />
+              {data.menu && data.menu.items.length > 0 && (
+                <MenuCard menu={data.menu} />
+              )}
 
-            <SelfParkingCard
-              data={data}
-              copy={selfCopy}
-              feedbackBusy={feedbackBusy}
-              feedbackStats={feedbackStats}
-              feedbackJustSent={feedbackJustSent}
-              onFeedback={sendFeedback}
-            />
+              <ParkingCandidateSection
+                dbCandidates={data.candidates}
+                usableExt={usableExt}
+                cautionExt={cautionExt}
+                excluded={excluded}
+                destinationLat={dest.lat}
+                destinationLng={dest.lng}
+                destinationName={destName}
+                onSelectDb={startVisit}
+              />
 
-            {data.menu && data.menu.items.length > 0 && (
-              <MenuCard menu={data.menu} />
-            )}
+              {data.history_for_destination.length > 0 && (
+                <>
+                  <h2 className="h2" style={{ marginTop: 16 }}>
+                    이 목적지의 과거 기록
+                  </h2>
+                  <ul className="list">
+                    {data.history_for_destination.map((h) => (
+                      <li key={h.visit_id} className="list-item">
+                        <span className="title">
+                          {h.selected_parking_name || "(주차장 미선택)"}
+                        </span>
+                        <span className="sub">
+                          {new Date(h.searched_at).toLocaleString("ko-KR")}
+                          {" · "}
+                          {h.actual_result ?? "결과 미입력"}
+                        </span>
+                        {h.memo && <span className="sub">메모: {h.memo}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
 
-            <CandidateSections
-              dbCandidates={data.candidates}
-              usableExt={usableExt}
-              cautionExt={cautionExt}
-              excluded={excluded}
-              destinationLat={dest.lat}
-              destinationLng={dest.lng}
-              destinationName={destName}
-              onSelectDb={startVisit}
-              onOpenMapDb={openKakaoMap}
-            />
-
-            {data.history_for_destination.length > 0 && (
-              <>
-                <h2 className="h2" style={{ marginTop: 16 }}>
-                  이 목적지의 과거 기록
-                </h2>
-                <ul className="list">
-                  {data.history_for_destination.map((h) => (
-                    <li key={h.visit_id} className="list-item">
-                      <span className="title">
-                        {h.selected_parking_name || "(주차장 미선택)"}
-                      </span>
-                      <span className="sub">
-                        {new Date(h.searched_at).toLocaleString("ko-KR")}
-                        {" · "}
-                        {h.actual_result ?? "결과 미입력"}
-                      </span>
-                      {h.memo && <span className="sub">메모: {h.memo}</span>}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-
-            <DataSourceFold />
-          </div>
-        </section>
+              <DataBasisPanel />
+            </>
+          }
+        />
       )}
     </div>
   );

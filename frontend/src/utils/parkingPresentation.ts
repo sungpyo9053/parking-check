@@ -1,6 +1,11 @@
-import type { AnalyzeResponse } from "./api";
-
-export type Verdict = "good" | "caution" | "bad" | "unknown";
+// 분석 화면에서 사용하는 표현/문구 헬퍼.
+// "내부 용어 → 사용자 문구" 변환과 verdict 문구 빌드를 한곳에 모은다.
+import type {
+  AnalyzeResponse,
+  ExternalCandidate,
+  UsabilityStatus,
+  Verdict,
+} from "../types/parking";
 
 export type VerdictInfo = {
   kind: Verdict;
@@ -9,8 +14,7 @@ export type VerdictInfo = {
   hint: string | null;
 };
 
-/** 최종 판단 카드용 문구.
- *  단정 표현("괜찮습니다" 등) 대신 "가능성 / 확인 필요" 톤을 사용한다. */
+/** "차 가져가도 될까?" 최종 판단 — 단정 표현 없이 가능성/확인필요 톤. */
 export function buildVerdict(data: AnalyzeResponse): VerdictInfo {
   const sp = data.self_parking;
   const tr = data.top_recommendation;
@@ -130,13 +134,13 @@ export function selfParkingCopy(data: AnalyzeResponse): SelfParkingCopy {
       return {
         tag: "가능성 높음",
         tagKind: "good",
-        line: "지도에 매장 자체 주차장이 등록되어 있습니다.",
+        line: "매장 자체 주차 이용 가능성이 있습니다. 주차 위치는 현장에서 확인하세요.",
       };
     case "likely":
       return {
         tag: "가능성 높음",
         tagKind: "good",
-        line: "후기/지도 정보 기준으로 매장 자체 주차가 가능한 것으로 보입니다.",
+        line: "후기/지도 정보 기준으로 매장 자체 주차가 가능한 것으로 보입니다. 현장 확인이 필요합니다.",
       };
     case "uncertain":
       return {
@@ -157,4 +161,56 @@ export function selfParkingCopy(data: AnalyzeResponse): SelfParkingCopy {
         line: "지도/후기에서 자체 주차 정보를 찾지 못했습니다. 현장 확인이 필요합니다.",
       };
   }
+}
+
+/** 도보 거리 출처 라벨 — 실 도보 경로 / 직선거리 기준 통일. */
+export function distanceSourceLabel(
+  source: "osrm" | "haversine" | null | undefined,
+): string {
+  return source === "osrm" ? "실 도보 경로" : "직선거리 기준";
+}
+
+/** "목적지까지 도보 약 N분 · 304m (직선거리 기준)" 같은 한 줄 문구. */
+export function walkLine(
+  walkingMinutes: number | null | undefined,
+  distanceM: number | null | undefined,
+  source: "osrm" | "haversine" | null | undefined,
+): string | null {
+  if (walkingMinutes == null && distanceM == null) return null;
+  const parts: string[] = [];
+  if (walkingMinutes != null) parts.push(`도보 약 ${walkingMinutes}분`);
+  if (distanceM != null)
+    parts.push(`${distanceM}m (${distanceSourceLabel(source)})`);
+  return parts.join(" · ");
+}
+
+/** usability → 사용자 라벨. */
+export function usabilityUserLabel(u: UsabilityStatus): string {
+  if (u === "usable") return "추천 가능";
+  if (u === "caution") return "확인 필요";
+  return "추천 제외";
+}
+
+export function usabilityTagClass(u: UsabilityStatus): string {
+  if (u === "usable") return "tag tag-verdict-good";
+  if (u === "caution") return "tag tag-verdict-caution";
+  return "tag tag-verdict-bad";
+}
+
+/** Kakao 카테고리 → 사용자 친화 분류. */
+export function kindLabel(category: string | null | undefined): string {
+  const cat = category || "";
+  if (cat.includes("공영")) return "공영주차장";
+  if (cat.includes("노상")) return "공영(노상)주차장";
+  if (cat.includes("주차")) return "민영/유료주차장";
+  return "주차장";
+}
+
+/** 외부 후보 소스 → 사용자 라벨. */
+export function externalSourceLabel(
+  source: ExternalCandidate["source"],
+): string {
+  if (source === "kakao_fallback") return "지도 검색 후보";
+  if (source === "web_search") return "웹 검색 후보";
+  return "참고 후보";
 }

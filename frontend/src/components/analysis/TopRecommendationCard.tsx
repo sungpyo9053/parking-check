@@ -1,20 +1,20 @@
-import type { AnalyzeResponse } from "../../lib/api";
+import type { AnalyzeResponse } from "../../types/parking";
 import { openKakaoFootRoute } from "../../lib/maps";
+import {
+  distanceSourceLabel,
+  kindLabel,
+} from "../../utils/parkingPresentation";
 
 type Props = {
   data: AnalyzeResponse;
   destName: string;
 };
 
-function kindLabel(category: string | null | undefined): string {
-  const cat = category || "";
-  if (cat.includes("공영")) return "공영주차장";
-  if (cat.includes("노상")) return "공영(노상)주차장";
-  if (cat.includes("주차")) return "민영/유료주차장";
-  return "주차장";
-}
-
-export default function TopRecCard({ data, destName }: Props) {
+/** 1순위 추천 카드.
+ *  - 자체 주차 가능 → 목적지 자체 안내 (도보 분 표시는 의미 없으므로 생략)
+ *  - 추천 후보 있음 → 1순위 후보 강조
+ *  - 둘 다 없음 → empty state */
+export default function TopRecommendationCard({ data, destName }: Props) {
   const sp = data.self_parking;
   const tr = data.top_recommendation;
   const dest = data.destination;
@@ -28,8 +28,8 @@ export default function TopRecCard({ data, destName }: Props) {
         </div>
         <div className="top-rec-name">{destName}</div>
         <div className="top-rec-help">
-          매장 자체 주차장 이용을 권장합니다. 실시간 가용은 현장 확인이
-          필요합니다.
+          매장 자체 주차장 이용을 권장합니다. 주차 위치/실시간 가용은 현장에서
+          확인이 필요합니다.
         </div>
       </div>
     );
@@ -54,8 +54,6 @@ export default function TopRecCard({ data, destName }: Props) {
   const c = tr.candidate;
   const canRoute = c.lat != null && c.lng != null;
   const distM = c.walking_route_distance_m ?? c.distance_m;
-  const distSourceLabel =
-    c.walking_route_source === "osrm" ? "실 도보 경로" : "직선거리 기준";
 
   return (
     <div className="top-rec-card">
@@ -69,7 +67,7 @@ export default function TopRecCard({ data, destName }: Props) {
         )}
         {distM != null && (
           <span style={{ marginLeft: 6 }}>
-            · {distM}m ({distSourceLabel})
+            · {distM}m ({distanceSourceLabel(c.walking_route_source)})
           </span>
         )}
       </div>

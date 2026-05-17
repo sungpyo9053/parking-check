@@ -1,5 +1,8 @@
-import type { AnalyzeResponse, SelfParkingFeedbackStats } from "../../lib/api";
-import type { SelfParkingCopy } from "../../lib/verdict";
+import type {
+  AnalyzeResponse,
+  SelfParkingFeedbackStats,
+} from "../../types/parking";
+import type { SelfParkingCopy } from "../../utils/parkingPresentation";
 
 type Props = {
   data: AnalyzeResponse;
@@ -10,6 +13,10 @@ type Props = {
   onFeedback: (answer: "yes" | "no" | "unknown") => void;
 };
 
+/** 목적지 자체 주차 카드.
+ *  - "도보 0분" 같은 표현은 의미가 없으므로 표시하지 않는다.
+ *  - 가능/불가/확인 필요 톤은 utils/parkingPresentation.ts 의 selfParkingCopy 에서 통일.
+ */
 export default function SelfParkingCard({
   data,
   copy,
