@@ -5,7 +5,7 @@
 - macOS / Linux
 - Python 3.11
 - Node.js 20 + npm
-- PostgreSQL 16 + PostGIS 3
+- PostgreSQL 17 + PostGIS 3 (Homebrew 의 `postgis` 포뮬러는 PG17 빌드로 설치된다. PG16 에 PostGIS 를 붙이려면 PG16용 PostGIS 를 별도 빌드해야 하므로, 로컬은 PG17 로 통일하는 것을 권장.)
 - (옵션) Docker / Docker Compose
 
 ## 2. 저장소 클론
@@ -37,12 +37,17 @@ cp frontend/.env.example frontend/.env
 ### 4-A. Homebrew (로컬)
 
 ```bash
-brew install postgresql@16 postgis
-brew services start postgresql@16
+brew install postgresql@17 postgis
+brew services start postgresql@17
+# PATH 에 postgresql@17 의 psql 이 먼저 잡히도록(선택):
+#   echo 'export PATH="/usr/local/opt/postgresql@17/bin:$PATH"' >> ~/.zshrc
+
 createdb parking
 psql -d parking -c "CREATE EXTENSION IF NOT EXISTS postgis;"
 psql -d parking < backend/db/init.sql
 ```
+
+> 참고: PostGIS 확장 파일은 `postgis` 포뮬러가 설치한 PG 버전(현재 PG17)의 `share/extension/` 아래에만 들어간다. `postgresql@16` 서버를 띄워둔 상태에서 `CREATE EXTENSION postgis` 를 시도하면 "extension control file ... not found" 로 실패한다. 둘 다 설치되어 있다면 `postgresql@17` 만 `brew services start` 로 띄울 것.
 
 확인:
 

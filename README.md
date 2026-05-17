@@ -37,8 +37,8 @@ Backend:
 - Pydantic / pydantic-settings
 
 Database:
-- PostgreSQL 16
-- PostGIS 3
+- PostgreSQL 17
+- PostGIS 3 (3.6.x 검증됨)
 
 External APIs:
 - Kakao Local API (장소 검색)

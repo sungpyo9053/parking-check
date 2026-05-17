@@ -1,6 +1,6 @@
 # DB 스키마
 
-PostgreSQL 16 + PostGIS 3. 모든 좌표는 WGS84 (SRID 4326). 정의는 `backend/db/init.sql` 이 정본.
+PostgreSQL 17 + PostGIS 3 (3.6.x 검증됨). 모든 좌표는 WGS84 (SRID 4326). 정의는 `backend/db/init.sql` 이 정본.
 
 ## ER (텍스트)
 
