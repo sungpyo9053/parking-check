@@ -27,6 +27,8 @@ type Props = {
   destinationLat?: number;
   destinationLng?: number;
   destinationName?: string;
+  /** 외부에서 추가 클래스 — fullbleed 등 레이아웃 변형용 */
+  className?: string;
 };
 
 const USABILITY_COLOR: Record<string, { bg: string; fg: string; bd: string }> = {
@@ -50,6 +52,7 @@ export default function KakaoMap({
   destinationLat,
   destinationLng,
   destinationName,
+  className,
 }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
@@ -273,7 +276,7 @@ export default function KakaoMap({
     }
   }, [markers, destinationLat, destinationLng, destinationName, mapReady]);
 
-  return <div ref={ref} className="map-wrap" />;
+  return <div ref={ref} className={`map-wrap${className ? ` ${className}` : ""}`} />;
 }
 
 function escapeHtml(s: string): string {
