@@ -1,10 +1,14 @@
-# --- env (절대 커밋 금지) ---
+# ─────────────────────────────────────────────
+#  Environment files  (절대 커밋 금지)
+# ─────────────────────────────────────────────
 .env
 .env.*
 !.env.example
+
 backend/.env
 backend/.env.*
 !backend/.env.example
+
 frontend/.env
 frontend/.env.*
 !frontend/.env.example
@@ -13,7 +17,9 @@ deploy.local.env
 .env.server
 .env.deploy
 
-# --- python ---
+# ─────────────────────────────────────────────
+#  Python
+# ─────────────────────────────────────────────
 backend/.venv/
 .venv/
 venv/
@@ -24,7 +30,9 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 
-# --- node / frontend build ---
+# ─────────────────────────────────────────────
+#  Node / Frontend build
+# ─────────────────────────────────────────────
 frontend/node_modules/
 node_modules/
 frontend/dist/
@@ -33,22 +41,32 @@ build/
 coverage/
 .vite/
 
-# --- 데이터 (CSV/XLSX/JSON 원본 적재 데이터) ---
+# ─────────────────────────────────────────────
+#  Data (CSV / XLSX / JSON 원본 적재 데이터)
+# ─────────────────────────────────────────────
 backend/scripts/data/*
 !backend/scripts/data/.gitkeep
 
-# --- 로그 / 인증서 / 비밀 ---
+# ─────────────────────────────────────────────
+#  Logs / Certificates / Secrets
+# ─────────────────────────────────────────────
 *.log
 *.pem
 *.key
 
-# --- IDE / OS ---
+# ─────────────────────────────────────────────
+#  IDE / OS
+# ─────────────────────────────────────────────
 .vscode/
 .idea/
 .DS_Store
 
-# --- Docker / DB volume ---
+# ─────────────────────────────────────────────
+#  Docker / DB volume
+# ─────────────────────────────────────────────
 postgres_data/
 
-# --- Claude Code 세션 ---
+# ─────────────────────────────────────────────
+#  Claude Code session
+# ─────────────────────────────────────────────
 .claude/
