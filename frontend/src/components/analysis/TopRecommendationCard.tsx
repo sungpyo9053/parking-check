@@ -19,7 +19,17 @@ export default function TopRecommendationCard({ data, destName }: Props) {
   const sp = data.self_parking;
   const tr = data.top_recommendation;
   const dest = data.destination;
-  const isSelf = sp.status === "available" || sp.status === "likely";
+  // 자체주차 1순위로 표시할 조건:
+  //  1) status 가 명시적으로 available/likely 이거나
+  //  2) uncertain 이지만 사용자 셀프 라벨 다수가 "있었음" 인 경우 (yes_ratio>=0.7 + total>=2)
+  const fb = data.self_parking_feedback_stats;
+  const totalFb = fb?.total ?? 0;
+  const yesFb = fb?.yes_count ?? 0;
+  const yesRatio = totalFb > 0 ? yesFb / totalFb : 0;
+  const userVouched =
+    sp.status === "uncertain" && totalFb >= 2 && yesFb >= 2 && yesRatio >= 0.7;
+  const isSelf =
+    sp.status === "available" || sp.status === "likely" || userVouched;
 
   if (isSelf) {
     return (

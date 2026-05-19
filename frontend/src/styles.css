@@ -1254,6 +1254,322 @@ button {
   border-radius: var(--radius-full);
 }
 
+/* ============================================================ */
+/* 흐름 4: PlanB ("주차 실패했어요")                              */
+/* ============================================================ */
+.planb {
+  margin: var(--space-4) 0;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  overflow: hidden;
+  transition: box-shadow 180ms ease-out;
+}
+.planb-open {
+  box-shadow: var(--shadow-card);
+}
+.planb-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--color-text-primary);
+}
+.planb-trigger-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: var(--color-verdict-uncertain-bg);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.planb-trigger-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.planb-trigger-text strong {
+  font-size: var(--font-size-section);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.2px;
+}
+.planb-trigger-sub {
+  font-size: var(--font-size-meta);
+  color: var(--color-text-secondary);
+}
+.planb-trigger-caret {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.planb-body {
+  padding: 0 var(--space-4) var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+.planb-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-3) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.planb-item {
+  padding: var(--space-3);
+  background: var(--color-bg-soft);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.planb-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.planb-item-name {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+.planb-item-walk {
+  font-size: var(--font-size-meta);
+  color: var(--color-text-secondary);
+}
+.planb-item-walk strong {
+  font-size: var(--font-size-section);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary-strong);
+}
+.planb-item-meta {
+  font-size: var(--font-size-meta);
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+.planb-item-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.planb-item-actions .btn {
+  flex: 1;
+  padding: 9px 10px;
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-md);
+}
+.planb-empty {
+  padding: var(--space-3);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-body);
+  text-align: center;
+  margin-top: var(--space-3);
+}
+.planb-foot {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
+}
+
+/* ============================================================ */
+/* 흐름 5: 주차 쉬운 대체 장소                                  */
+/* ============================================================ */
+.easy-alt {
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+.easy-alt-head {
+  margin-bottom: var(--space-3);
+}
+.easy-alt-title {
+  font-size: var(--font-size-section);
+  font-weight: var(--font-weight-bold);
+  color: #14532d;
+  letter-spacing: -0.2px;
+}
+.easy-alt-sub {
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+  line-height: var(--line-height-body);
+}
+.easy-alt-empty {
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  padding: var(--space-2) 0;
+}
+.easy-alt-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.easy-alt-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.easy-alt-rank {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: var(--color-verdict-available);
+  color: var(--color-text-inverse);
+  display: grid;
+  place-items: center;
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-bold);
+}
+.easy-alt-body {
+  flex: 1;
+  min-width: 0;
+}
+.easy-alt-name {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  letter-spacing: -0.2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.easy-alt-meta {
+  font-size: var(--font-size-meta);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+.easy-alt-chip {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  background: var(--color-verdict-available-bg);
+  color: var(--color-verdict-available);
+  border-radius: var(--radius-full);
+}
+.easy-alt-cta {
+  flex-shrink: 0;
+  padding: 9px 12px;
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-bold);
+  border-radius: var(--radius-md);
+}
+
+/* ============================================================ */
+/* 흐름 6: 방문 후 3초 제보                                     */
+/* ============================================================ */
+.visit-report {
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+.visit-report-disabled {
+  opacity: 0.6;
+  text-align: center;
+}
+.visit-report-q {
+  font-size: var(--font-size-section);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.2px;
+}
+.visit-report-q-sub {
+  font-size: var(--font-size-meta);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+  margin-left: 4px;
+}
+.visit-report-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.visit-report-btn {
+  padding: 12px 8px;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  background: var(--color-bg-soft);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: transform 120ms ease-out, background 120ms ease-out;
+}
+.visit-report-btn:hover {
+  transform: translateY(-1px);
+  background: var(--color-primary-soft);
+}
+.visit-report-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.visit-report-btn-on {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border-color: var(--color-primary);
+}
+.visit-report-walk {
+  margin-top: var(--space-3);
+}
+.visit-report-walk-q {
+  font-size: var(--font-size-meta);
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
+}
+.visit-report-walk-buttons {
+  display: flex;
+  gap: 6px;
+}
+.btn-mini {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-semibold);
+  background: var(--color-bg-soft);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.btn-mini-on {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-strong);
+  border-color: var(--color-primary);
+}
+.visit-report-stats {
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  font-size: var(--font-size-meta);
+  color: var(--color-text-secondary);
+  border-top: 1px dashed var(--color-border);
+}
+.visit-report-foot {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+}
+
 /* === 기존 verdict-pill (호환 유지, 다른 곳에서 쓰면) === */
 .verdict-pill {
   display: flex;

@@ -315,6 +315,40 @@ def analyze(
         has_kakao_self_parking=has_kakao_self,
     )
 
+    # 사용자 셀프 라벨링(PlaceSelfParkingFeedback) 가산 — 데이터 플라이휠.
+    # 의도: 시스템이 uncertain/unknown 으로 본 매장이라도 방문자 다수가 "있었음" 으로
+    # 답하면 confidence + status 격상. 반대로 다수가 "없었음" 이면 강등.
+    # 임계값:
+    #   total>=2 + yes_ratio>=0.7 → +30, uncertain/unknown → likely
+    #   total>=5 + yes_ratio>=0.8 → +50
+    #   total>=3 + yes_ratio<=0.3 + no_count>=2 → -20, likely/available → uncertain
+    if dest_place is not None:
+        _fb = _self_parking_feedback_stats(db, dest_place.id)
+        _total = _fb.total or 0
+        _yes = _fb.yes_count or 0
+        _no = _fb.no_count or 0
+        _yes_ratio = (_yes / _total) if _total else 0.0
+        if _total >= 2 and _yes >= 2 and _yes_ratio >= 0.7:
+            bonus = 50 if (_total >= 5 and _yes_ratio >= 0.8) else 30
+            self_parking.confidence = min(100, (self_parking.confidence or 0) + bonus)
+            if self_parking.status in ("unknown", "uncertain"):
+                self_parking.status = "likely"
+                self_parking.label = "자체 주차 가능 (사용자 보고 다수)"
+                self_parking.reason = (
+                    (self_parking.reason or "")
+                    + f" / 사용자 보고 {_total}건 중 {_yes}건이 '있었음'."
+                ).strip(" /")
+        elif _total >= 3 and _yes_ratio <= 0.3 and _no >= 2:
+            self_parking.confidence = max(
+                0, (self_parking.confidence or 0) - 20
+            )
+            if self_parking.status in ("available", "likely"):
+                self_parking.status = "uncertain"
+                self_parking.reason = (
+                    (self_parking.reason or "")
+                    + f" / 사용자 보고 {_total}건 중 {_no}건이 '없었음'."
+                ).strip(" /")
+
     if len(candidates) == 0 and len(external_candidates) == 0:
         disclaimers.append(
             "현재 연결된 데이터 소스에서는 반경 내 주차장 후보를 찾지 못했습니다. "
