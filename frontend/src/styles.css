@@ -1098,7 +1098,44 @@ button {
   color: #334155;
 }
 
-/* === 주차 스트레스 지수 게이지 === */
+/* === 흐름 2: ParkingStressMeter (독립 카드) === */
+.stress-card {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-4);
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+.stress-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.stress-helper {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-semibold);
+}
+.stress-helper-low {
+  color: var(--color-verdict-available);
+}
+.stress-helper-medium {
+  color: var(--color-verdict-uncertain);
+}
+.stress-helper-high {
+  color: var(--color-verdict-unavailable);
+}
+.stress-helper-cue {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+/* === (legacy 내부 게이지 — 호환 유지) === */
 .stress-gauge {
   margin-top: var(--space-3);
   display: flex;

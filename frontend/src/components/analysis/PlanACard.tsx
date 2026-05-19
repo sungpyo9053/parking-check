@@ -15,7 +15,7 @@ type Props = {
  *  - 추천 후보 있음 → 1순위 후보 강조 (큰 도보 분)
  *  - 둘 다 없음 → empty
  */
-export default function TopRecommendationCard({ data, destName }: Props) {
+export default function PlanACard({ data, destName }: Props) {
   const sp = data.self_parking;
   const tr = data.top_recommendation;
   const dest = data.destination;

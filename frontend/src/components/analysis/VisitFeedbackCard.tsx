@@ -36,7 +36,7 @@ const WALK_BTN: { key: WalkBucket; label: string }[] = [
  *  - 4개 버튼(가능/근처/불가/모름) + 선택적 도보 시간
  *  - 백엔드 호환을 위해 nearby 는 no + note 로 전송
  */
-export default function VisitReportCard({
+export default function VisitFeedbackCard({
   placeId,
   feedbackBusy,
   feedbackStats,

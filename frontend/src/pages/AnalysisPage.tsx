@@ -10,10 +10,14 @@ import type {
 import KakaoMap, { MapMarker } from "../components/KakaoMap";
 import AnalysisHeader from "../components/analysis/AnalysisHeader";
 import VerdictCard from "../components/analysis/VerdictCard";
+import ParkingStressMeter from "../components/analysis/ParkingStressMeter";
 import AnalysisBottomSheet, {
   SheetState,
 } from "../components/analysis/AnalysisBottomSheet";
-import TopRecommendationCard from "../components/analysis/TopRecommendationCard";
+import PlanACard from "../components/analysis/PlanACard";
+import PlanBPanel from "../components/analysis/PlanBPanel";
+import AlternativePlaceSection from "../components/analysis/AlternativePlaceSection";
+import VisitFeedbackCard from "../components/analysis/VisitFeedbackCard";
 import SelfParkingCard from "../components/analysis/SelfParkingCard";
 import MenuCard from "../components/analysis/MenuCard";
 import ParkingCandidateSection from "../components/analysis/ParkingCandidateSection";
@@ -226,12 +230,16 @@ export default function AnalysisPage() {
     }
   }
 
-  async function sendFeedback(answer: "yes" | "no" | "unknown") {
+  async function sendFeedback(
+    answer: "yes" | "no" | "unknown",
+    note: string | null = null,
+  ) {
     if (!data?.destination.place_id) return;
     setFeedbackBusy(true);
     try {
       await api.submitSelfParkingFeedback(data.destination.place_id, {
         answer,
+        note: note ?? undefined,
         user_token: getUserToken(),
       });
       const sum = await api.selfParkingFeedbackSummary(
@@ -443,12 +451,28 @@ export default function AnalysisPage() {
           peek={<VerdictCard verdict={verdict} />}
           body={
             <>
-              {verdict.hint && (
-                <div className="verdict-hint-inline">{verdict.hint}</div>
+              {/* 흐름 2: 주차 스트레스 지수 */}
+              <ParkingStressMeter stress={verdict.stress} />
+
+              {/* 흐름 3: 플랜 A — 1순위 주차 플랜 */}
+              <PlanACard data={data} destName={destName} />
+
+              {/* 흐름 4: 주차 실패했어요 — 플랜 B 토글 */}
+              <PlanBPanel data={data} destName={destName} />
+
+              {/* 흐름 5: 주차 쉬운 대체 장소 (uncertain/unavailable/unknown 일 때만) */}
+              {(verdict.kind === "caution" ||
+                verdict.kind === "bad" ||
+                verdict.kind === "unknown") && (
+                <AlternativePlaceSection
+                  destLat={dest.lat}
+                  destLng={dest.lng}
+                  destCategoryGroup={null}
+                  destName={destName}
+                />
               )}
 
-              <TopRecommendationCard data={data} destName={destName} />
-
+              {/* 보조: 자체주차 evidence 인용 (셀프 라벨링 버튼은 제거 — VisitFeedbackCard 로 통일) */}
               <SelfParkingCard
                 data={data}
                 copy={selfCopy}
@@ -462,6 +486,7 @@ export default function AnalysisPage() {
                 <MenuCard menu={data.menu} />
               )}
 
+              {/* 보조: 전체 후보 리스트 (참고용, 펼치기로 둘 수 있음) */}
               <ParkingCandidateSection
                 dbCandidates={data.candidates}
                 usableExt={usableExt}
@@ -495,6 +520,15 @@ export default function AnalysisPage() {
                   </ul>
                 </>
               )}
+
+              {/* 흐름 6: 방문 후 3초 제보 */}
+              <VisitFeedbackCard
+                placeId={data.destination.place_id ?? null}
+                feedbackBusy={feedbackBusy}
+                feedbackStats={feedbackStats}
+                feedbackJustSent={feedbackJustSent}
+                onSubmit={({ answer, note }) => sendFeedback(answer, note)}
+              />
 
               <DataBasisPanel />
             </>

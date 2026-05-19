@@ -28,7 +28,7 @@ function inferCategory(group: string | null): "cafe" | "food" | "sights" {
  *  - 같은 카테고리에서 주변 후보 가져와 거리 가까운 순 3개 표시
  *  - "주차 스트레스가 낮은 후보" 라고 명시 (단정적인 인기 순위 X)
  */
-export default function EasyAlternativesPanel({
+export default function AlternativePlaceSection({
   destLat,
   destLng,
   destCategoryGroup,
