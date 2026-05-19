@@ -503,12 +503,33 @@ def enrich_self_parking(
                 "인근 추천 주차장을 우선 검토하세요."
             )
         elif used_score >= THRESHOLD_UNCERTAIN:
-            final_status = "uncertain"
-            final_confidence = max(final_confidence, 35)
-            final_reason = (
-                "주차 관련 약한 긍정 신호가 확인됩니다. "
-                "정확한 가능 여부는 매장 확인이 필요합니다." + prior_note
+            # [A] 격상 룰 — uncertain 컷오프는 넘지만 LIKELY 미만이라도,
+            # 일관된 긍정 evidence 가 충분히 많으면 likely 로 올린다.
+            #   - high confidence evidence ≥ 2
+            #   - 또는 high ≥ 1 + medium ≥ 2
+            #   - 또는 evidence 총 ≥ 4 + combined_score ≥ 35 (강한 긍정이 다수)
+            high_n = sum(1 for e in evidences if e.confidence == "high")
+            med_n = sum(1 for e in evidences if e.confidence == "medium")
+            ev_total = len(evidences)
+            promote = (
+                high_n >= 2
+                or (high_n >= 1 and med_n >= 2)
+                or (ev_total >= 4 and used_score >= 35)
             )
+            if promote:
+                final_status = "likely"
+                final_confidence = max(final_confidence, min(95, 60 + used_score // 6))
+                final_reason = (
+                    f"자체 주차 긍정 시그널이 {ev_total}건 일관되게 확인됩니다. "
+                    "매장 자체 주차장 가능성이 높습니다." + prior_note
+                )
+            else:
+                final_status = "uncertain"
+                final_confidence = max(final_confidence, 35)
+                final_reason = (
+                    "주차 관련 약한 긍정 신호가 확인됩니다. "
+                    "정확한 가능 여부는 매장 확인이 필요합니다." + prior_note
+                )
         elif used_score <= -THRESHOLD_UNAVAILABLE_NEG:
             final_status = "unavailable"
             final_confidence = max(final_confidence, 60)
