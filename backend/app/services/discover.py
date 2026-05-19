@@ -68,6 +68,40 @@ _TAVILY_MAX_QUERIES = 2
 _TAVILY_TIMEOUT = 8.0
 TAVILY_URL = "https://api.tavily.com/search"
 
+# "인스타 회자" 후보에서 제외할 체인 brand — 카카오 거리순 결과를 채워서
+# 진짜 인스타에서 회자되는 인디 매장이 밀리는 문제 방지.
+# 음식점은 일부 체인 (예: 본죽) 그대로 두고 카페만 강하게 제외.
+_CHAIN_KEYWORDS = {
+    "cafe": {
+        "스타벅스",
+        "컴포즈커피",
+        "메가커피",
+        "메가mgc",
+        "이디야",
+        "투썸플레이스",
+        "투썸",
+        "빽다방",
+        "할리스",
+        "파스쿠찌",
+        "엔젤리너스",
+        "커피빈",
+        "탐앤탐스",
+        "폴바셋",
+        "더벤티",
+        "매머드커피",
+        "커피에반하다",
+        "공차",
+    },
+    "food": set(),
+    "sights": set(),
+}
+
+# 검색 결과(블로그/유튜브 본문)에서 매장명 후보를 자동 추출하는 패턴.
+# 해시태그(#성수옹근달 → 옹근달) / 따옴표 안 단어 / "{이름} 카페" 패턴.
+_HASHTAG_RE = re.compile(r"#([가-힣A-Za-z0-9]{2,18})")
+_QUOTED_RE = re.compile(r"['\"‘’“”]([가-힣A-Za-z0-9 ]{2,15})['\"‘’“”]")
+_NAME_BEFORE_CAFE_RE = re.compile(r"([가-힣A-Za-z0-9]{2,12})\s*(?:카페|베이커리|로스터스|로스터리)")
+
 
 def _tavily_search(query: str, api_key: str, max_results: int = 10) -> list[dict]:
     body = {

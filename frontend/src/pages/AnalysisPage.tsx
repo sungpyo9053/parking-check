@@ -10,7 +10,10 @@ import type {
 import KakaoMap, { MapMarker } from "../components/KakaoMap";
 import AnalysisHeader from "../components/analysis/AnalysisHeader";
 import VerdictCard from "../components/analysis/VerdictCard";
-import ParkingStressMeter from "../components/analysis/ParkingStressMeter";
+import ParkingHellLevelCard from "../components/analysis/ParkingHellLevelCard";
+import CarCompatibilityCard from "../components/analysis/CarCompatibilityCard";
+import DrivingScenarioTimeline from "../components/analysis/DrivingScenarioTimeline";
+import ShareablePunchline from "../components/analysis/ShareablePunchline";
 import AnalysisBottomSheet, {
   SheetState,
 } from "../components/analysis/AnalysisBottomSheet";
@@ -453,11 +456,17 @@ export default function AnalysisPage() {
           peek={<VerdictCard verdict={verdict} />}
           body={
             <>
-              {/* 흐름 2: 주차 스트레스 지수 */}
-              <ParkingStressMeter stress={verdict.stress} />
+              {/* 흐름 2: 주차 헬 난이도 (Stress 대체) */}
+              <ParkingHellLevelCard verdict={verdict} />
+
+              {/* 신박 1: 내 차 궁합 */}
+              <CarCompatibilityCard data={data} verdict={verdict} />
 
               {/* 흐름 3: 플랜 A — 1순위 주차 플랜 */}
               <PlanACard data={data} destName={destName} />
+
+              {/* 신박 3: 차 가져가면 예상 시나리오 */}
+              <DrivingScenarioTimeline data={data} verdict={verdict} />
 
               {/* 흐름 4: 주차 실패했어요 — 플랜 B 토글 */}
               <PlanBPanel data={data} destName={destName} />
@@ -522,6 +531,9 @@ export default function AnalysisPage() {
                   </ul>
                 </>
               )}
+
+              {/* 신박 4: 공유용 한 줄 밈 */}
+              <ShareablePunchline verdict={verdict} />
 
               {/* 흐름 6: 방문 후 3초 제보 */}
               <VisitFeedbackCard
