@@ -39,6 +39,19 @@ export default function SelfParkingCard({
         </div>
       )}
 
+      {!data.self_parking.summary_natural &&
+        data.self_parking.evidence &&
+        data.self_parking.evidence.length > 0 && (
+          <div className="self-card-quote">
+            💬 {data.self_parking.evidence[0].snippet}
+            {data.self_parking.evidence[0].title && (
+              <div className="self-card-quote-src">
+                — {data.self_parking.evidence[0].title}
+              </div>
+            )}
+          </div>
+        )}
+
       {data.destination.place_id && (
         <div className="sp-feedback">
           <div className="sp-feedback-q">실제로 자체 주차 가능했나요?</div>

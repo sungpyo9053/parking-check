@@ -10,6 +10,12 @@ from ..services.discover import Category, cache_stats, discover_hot_places
 router = APIRouter(prefix="/api/discover", tags=["discover"])
 
 
+class Congestion(BaseModel):
+    level: Literal["low", "medium", "high"]
+    label: str
+    basis: str
+
+
 class HotPlaceItem(BaseModel):
     name: str
     category: str | None = None
@@ -23,8 +29,12 @@ class HotPlaceItem(BaseModel):
     walking_minutes: int | None = None
     place_url: str | None = None
     hot_score: float
-    instagram_mentions: int = 0
+    youtube_video_count: int = 0
+    youtube_total_views: int = 0
+    naver_mentions: int = 0
+    tavily_mentions: int = 0
     region_label: str | None = None
+    congestion: Congestion | None = None
 
 
 class HotResponse(BaseModel):

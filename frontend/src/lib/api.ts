@@ -337,6 +337,12 @@ export const api = {
   },
 };
 
+export type HotCongestion = {
+  level: "low" | "medium" | "high";
+  label: string;
+  basis: string;
+};
+
 export type HotPlaceItem = {
   name: string;
   category: string | null;
@@ -350,8 +356,12 @@ export type HotPlaceItem = {
   walking_minutes: number | null;
   place_url: string | null;
   hot_score: number;
-  instagram_mentions: number;
+  youtube_video_count: number;
+  youtube_total_views: number;
+  naver_mentions: number;
+  tavily_mentions: number;
   region_label: string | null;
+  congestion: HotCongestion | null;
 };
 
 export type DiscoverHotResponse = {

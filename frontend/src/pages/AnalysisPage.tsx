@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import type {
@@ -22,6 +22,7 @@ import { buildVerdict, selfParkingCopy } from "../utils/parkingPresentation";
 import { isFavorite, toggleFavorite } from "../lib/favorites";
 import { getGroup } from "../lib/favoritesGroup";
 import { sharePage } from "../lib/share";
+import ShareImageCard from "../components/analysis/ShareImageCard";
 
 function getUserToken(): string {
   try {
@@ -133,18 +134,85 @@ export default function AnalysisPage() {
     }
   }
 
+  const shareCardRef = useRef<HTMLDivElement | null>(null);
+
   async function doShare() {
     if (!data) return;
     const name = data.destination.name || placeName || "목적지";
     const v = buildVerdict(data);
     const top = data.top_recommendation?.candidate;
+    const url = `${window.location.origin}${window.location.pathname}${window.location.search}`;
+
+    // 1) 이미지 캡처 시도 (오프스크린 ShareImageCard → blob)
+    let imageFile: File | null = null;
+    try {
+      if (shareCardRef.current) {
+        const { default: html2canvas } = await import("html2canvas-pro");
+        const canvas = await html2canvas(shareCardRef.current, {
+          backgroundColor: null,
+          scale: 2,
+          logging: false,
+          useCORS: true,
+        });
+        const blob: Blob | null = await new Promise((resolve) =>
+          canvas.toBlob(resolve, "image/png"),
+        );
+        if (blob)
+          imageFile = new File([blob], `parking-check-${name}.png`, {
+            type: "image/png",
+          });
+      }
+    } catch (e) {
+      // 캡처 실패해도 텍스트 공유로 폴백
+      console.warn("share image capture failed", e);
+    }
+
+    // 2) 이미지가 있고 Web Share API 가 파일 지원하면 이미지로 공유
+    if (
+      imageFile &&
+      typeof navigator !== "undefined" &&
+      typeof navigator.share === "function" &&
+      typeof navigator.canShare === "function" &&
+      navigator.canShare({ files: [imageFile] })
+    ) {
+      try {
+        await navigator.share({
+          title: `주차될까 - ${name}`,
+          text: v.title,
+          url,
+          files: [imageFile],
+        });
+        setShareMsg("공유됨");
+        setTimeout(() => setShareMsg(null), 2000);
+        return;
+      } catch (e) {
+        const err = e instanceof Error ? e : new Error(String(e));
+        if (err.name === "AbortError") return;
+        // 실패 시 다운로드로 폴백
+      }
+    }
+
+    // 3) 이미지 다운로드 폴백 (데스크탑 / 파일 공유 미지원 브라우저)
+    if (imageFile) {
+      const objUrl = URL.createObjectURL(imageFile);
+      const a = document.createElement("a");
+      a.href = objUrl;
+      a.download = imageFile.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objUrl);
+      setShareMsg("이미지 저장됨");
+      setTimeout(() => setShareMsg(null), 2000);
+      return;
+    }
+
+    // 4) 최종 폴백: 텍스트 + 링크
     const bits: string[] = [v.title];
-    if (top) {
+    if (top)
       bits.push(
         `추천: ${top.name}${top.walking_minutes != null ? ` (도보 약 ${top.walking_minutes}분)` : ""}`,
       );
-    }
-    const url = `${window.location.origin}${window.location.pathname}${window.location.search}`;
     const res = await sharePage({
       title: `주차될까 - ${name}`,
       text: bits.join(" · "),
@@ -431,6 +499,27 @@ export default function AnalysisPage() {
             </>
           }
         />
+      )}
+
+      {/* 오프스크린 공유 이미지 카드 — 캡처용 (visually hidden) */}
+      {data && verdict && (
+        <div
+          aria-hidden
+          style={{
+            position: "fixed",
+            top: 0,
+            left: -10000,
+            pointerEvents: "none",
+            opacity: 1,
+          }}
+        >
+          <ShareImageCard
+            ref={shareCardRef}
+            destName={destName}
+            verdict={verdict}
+            data={data}
+          />
+        </div>
       )}
     </div>
   );

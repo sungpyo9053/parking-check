@@ -31,6 +31,14 @@ function selfBadge(status: string | undefined): {
 
 type Category = "cafe" | "food" | "sights";
 
+/** views 절대값을 사람 친화적 라벨로. 100k+ = 매우 높음 / 10k+ = 높음 / 그 외 = 있음. */
+function viewLabel(views: number): string {
+  if (views >= 100_000) return "매우 높음";
+  if (views >= 10_000) return "높음";
+  if (views > 0) return "있음";
+  return "없음";
+}
+
 const CATS: { key: Category; label: string; emoji: string }[] = [
   { key: "cafe", label: "카페", emoji: "☕" },
   { key: "food", label: "맛집", emoji: "🍽" },
@@ -258,19 +266,18 @@ export default function DiscoverHot() {
       {data && data.items.length > 0 && (
         <ul className="list" style={{ marginTop: 8 }}>
           {data.items.map((it, idx) => (
-            <li key={`${it.name}-${idx}`} className="pcard">
+            <li
+              key={`${it.name}-${idx}`}
+              className="pcard pcard-hot"
+              style={{ animationDelay: `${idx * 80}ms` }}
+            >
               <div className="head">
                 <span className="name">
                   {idx + 1}. {it.name}
                 </span>
-                {it.instagram_mentions > 0 && (
-                  <span className="tag tag-high">
-                    📷 ×{it.instagram_mentions}
-                  </span>
-                )}
               </div>
               <div className="meta">
-                {it.distance_m}m · 직선거리 도보 약 {it.walking_minutes}분
+                도보 약 {it.walking_minutes}분 · {it.distance_m}m
                 {it.category && <span> · {it.category}</span>}
               </div>
               {(it.address || it.road_address) && (
@@ -278,8 +285,32 @@ export default function DiscoverHot() {
                   {it.road_address || it.address}
                 </div>
               )}
-              <div className="meta muted" style={{ fontSize: 11 }}>
-                hot score {it.hot_score}
+
+              {/* 신뢰 신호 칩 (단정 X, 신호의 강약을 그대로 노출) */}
+              <div className="hot-signals">
+                {it.youtube_video_count > 0 && (
+                  <span className="signal-chip signal-chip-yt">
+                    YouTube 조회 신호 {viewLabel(it.youtube_total_views)}
+                  </span>
+                )}
+                {it.naver_mentions > 0 && (
+                  <span className="signal-chip signal-chip-naver">
+                    블로그 언급 {it.naver_mentions}건
+                  </span>
+                )}
+                {it.tavily_mentions > 0 && (
+                  <span className="signal-chip signal-chip-web">
+                    웹 추천 글 {it.tavily_mentions}건
+                  </span>
+                )}
+                {it.congestion && (
+                  <span
+                    className={`signal-chip signal-chip-cong signal-chip-cong-${it.congestion.level}`}
+                    title={it.congestion.basis}
+                  >
+                    예상 {it.congestion.label}
+                  </span>
+                )}
               </div>
 
               {/* 주차 미리보기 */}

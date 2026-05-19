@@ -7,14 +7,86 @@ import type {
   Verdict,
 } from "../types/parking";
 
+export type StressLevel = "low" | "medium" | "high";
+
 export type VerdictInfo = {
   kind: Verdict;
+  /** 상태별 한 줄 결론 (큰 글씨) */
   title: string;
+  /** 부연 한 줄 (작은 글씨) */
   detail: string;
   hint: string | null;
+  /** 신뢰도 — UI 선형 bar 에 사용. confidence 점수 기반 매핑. */
+  confidence: StressLevel;
+  /** 주차 스트레스 지수 (0~100, 높을수록 어려움). */
+  stress: { score: number; level: StressLevel; cue: string | null };
 };
 
-/** "차 가져가도 될까?" 최종 판단 — 단정 표현 없이 가능성/확인필요 톤. */
+/** confidence 점수(0~) 를 사용자 신뢰도(low/med/high) 로 매핑. */
+function _confidenceLevel(score: number | null | undefined): StressLevel {
+  const s = score ?? 0;
+  if (s >= 70) return "high";
+  if (s >= 35) return "medium";
+  return "low";
+}
+
+/** "주차 스트레스 지수" 산정 (0~100, 높을수록 어려움).
+ *  - 자체 주차 가능/불가 비중이 가장 큼
+ *  - 추천 주차장 도보 거리, 후보 수 보조
+ *  - 임의 점수가 아니라 데이터 기반이지만, "정확한 측정"이 아닌 "체감 가이드".
+ */
+function _computeStress(data: AnalyzeResponse): {
+  score: number;
+  level: StressLevel;
+  cue: string | null;
+} {
+  const sp = data.self_parking;
+  const tr = data.top_recommendation;
+  const trc = tr?.candidate;
+  const usableCount =
+    data.candidates.length +
+    (data.external_candidates || []).filter((e) => e.usability === "usable")
+      .length;
+
+  let s = 50; // 출발점 = 보통
+
+  // 자체주차 영향 (가장 큰 비중)
+  if (sp.status === "available") s -= 35;
+  else if (sp.status === "likely") s -= 25;
+  else if (sp.status === "uncertain") s += 0;
+  else if (sp.status === "unavailable") s += 20;
+  else s += 10; // unknown
+
+  // 추천 주차장 도보 시간
+  if (trc) {
+    const w = trc.walking_minutes ?? 99;
+    if (w <= 3) s -= 10;
+    else if (w <= 5) s -= 5;
+    else if (w <= 10) s += 0;
+    else s += 10;
+  } else {
+    s += 15;
+  }
+
+  // 추천 가능 후보 개수
+  if (usableCount >= 3) s -= 5;
+  else if (usableCount === 0) s += 5;
+
+  const score = Math.max(0, Math.min(100, Math.round(s)));
+  const level: StressLevel = score >= 61 ? "high" : score >= 31 ? "medium" : "low";
+
+  let cue: string | null = null;
+  if (score >= 80) cue = "초보 운전자에게 매우 어려움";
+  else if (score >= 65) cue = "초보 운전자면 비추천";
+  else if (score <= 20) cue = "차 가져가도 부담 없음";
+  else if (score <= 35) cue = "차 가져가도 괜찮음";
+
+  return { score, level, cue };
+}
+
+/** "차 가져가도 될까?" 최종 판단 — 단정 표현 없이 가능성/확인필요 톤.
+ *  copy/색/아이콘은 self_parking.status 5단계와 1:1 매핑 (UI 가이드 스펙).
+ */
 export function buildVerdict(data: AnalyzeResponse): VerdictInfo {
   const sp = data.self_parking;
   const tr = data.top_recommendation;
@@ -28,96 +100,90 @@ export function buildVerdict(data: AnalyzeResponse): VerdictInfo {
   ).length;
   const excludedCount = data.fallback?.excluded_items?.length ?? 0;
   const trWalkMin = trc?.walking_minutes ?? null;
+  const conf = _confidenceLevel(sp.confidence);
+  const stress = _computeStress(data);
 
-  if (sp.status === "available" || sp.status === "likely") {
+  // 1. available — 차 가져가도 OK
+  if (sp.status === "available") {
     return {
       kind: "good",
-      title: "차로 가도 될 가능성이 있습니다",
-      detail:
-        "목적지에 자체 주차가 가능한 것으로 보입니다. 현장에서 한 번 더 확인이 필요합니다.",
+      title: "차 가져가도 괜찮아 보여요",
+      detail: "자체주차 가능성이 높습니다",
       hint:
         excludedCount > 0
           ? `근처 타 매장 전용 주차장 ${excludedCount}곳은 추천에서 제외했습니다.`
           : null,
+      confidence: conf === "low" ? "medium" : conf,
+      stress,
     };
   }
-  if (
-    sp.status === "unavailable" &&
-    trc &&
-    trWalkMin != null &&
-    trWalkMin <= 7
-  ) {
+
+  // 2. likely — 가능성 있음 (한번 확인 권장)
+  if (sp.status === "likely") {
     return {
       kind: "good",
-      title: "차로 가도 될 가능성이 있습니다",
-      detail: `자체 주차장은 없는 것으로 보이지만, 도보 약 ${trWalkMin}분 거리의 추천 주차장이 있습니다.`,
+      title: "주차 가능성이 있어요",
+      detail: "방문 전 한 번만 확인하세요",
       hint:
         excludedCount > 0
           ? `타 매장 전용 주차장 ${excludedCount}곳은 추천에서 제외했습니다.`
           : null,
+      confidence: conf,
+      stress,
     };
   }
+
+  // 3. unavailable — 자체주차 X
   if (sp.status === "unavailable") {
-    if (trc) {
+    if (trc && trWalkMin != null && trWalkMin <= 7) {
       return {
         kind: "caution",
-        title: "주차 후 좀 걸어야 할 수 있습니다",
-        detail: `자체 주차장은 없는 것으로 보입니다. 가까운 추천 주차장까지 도보 약 ${trWalkMin ?? "?"}분.`,
+        title: "확인이 필요해요",
+        detail: `자체주차는 어렵지만 도보 약 ${trWalkMin}분 거리의 추천 주차장이 있어요`,
         hint:
           cautionCount > 0
             ? `추가 확인이 필요한 후보 ${cautionCount}곳도 함께 표시했습니다.`
             : null,
+        confidence: conf,
+        stress,
       };
     }
     return {
       kind: "bad",
-      title: "차로 가는 것은 권장하지 않습니다",
-      detail:
-        "자체 주차장이 없는 것으로 보이고, 가까운 공용 주차장도 찾지 못했습니다.",
-      hint: "대중교통/택시 이용을 고려해 보세요.",
+      title: "차 없이 가는 게 나아요",
+      detail: "자체주차 가능성이 낮습니다",
+      hint: trc ? null : "대중교통/택시 이용을 고려해 보세요.",
+      confidence: conf,
+      stress,
     };
   }
-  if (sp.status === "uncertain" && trc && trWalkMin != null && trWalkMin <= 7) {
-    return {
-      kind: "good",
-      title: "차로 가도 될 가능성이 있습니다",
-      detail: `자체 주차는 확인이 필요하지만, 도보 약 ${trWalkMin}분 거리의 추천 주차장이 있습니다.`,
-      hint: null,
-    };
-  }
+
+  // 4. uncertain — 정보 엇갈림
   if (sp.status === "uncertain") {
-    if (trc) {
-      return {
-        kind: "caution",
-        title: "확인이 필요합니다",
-        detail: `목적지 자체 주차는 매장 확인이 필요합니다. 추천 주차장까지 도보 약 ${trWalkMin ?? "?"}분.`,
-        hint: null,
-      };
-    }
     return {
       kind: "caution",
-      title: "확인이 필요합니다",
-      detail:
-        "자체 주차 여부를 확실히 판단하기 어렵습니다. 매장에 문의하거나 현장에서 확인하세요.",
-      hint: null,
+      title: "확인이 필요해요",
+      detail: "주차 정보가 엇갈리거나 근거가 부족합니다",
+      hint:
+        trc && trWalkMin != null
+          ? `근처 추천 주차장까지 도보 약 ${trWalkMin}분`
+          : null,
+      confidence: conf,
+      stress,
     };
   }
-  if (usableCount === 0 && cautionCount === 0 && !trc) {
-    return {
-      kind: "unknown",
-      title: "정보가 부족합니다",
-      detail:
-        "이 위치 주변의 주차장 정보를 충분히 찾지 못했습니다. 현장 확인이 필요합니다.",
-      hint: null,
-    };
-  }
+
+  // 5. unknown — 판단 보류
   return {
     kind: "unknown",
-    title: "정보가 부족합니다",
-    detail: trc
-      ? `자체 주차 정보를 확인할 수 없습니다. 참고 후보로 도보 약 ${trWalkMin ?? "?"}분 거리의 주차장이 있습니다.`
-      : "자체 주차 정보를 확인할 수 없습니다.",
-    hint: null,
+    title: "아직 판단하기 어려워요",
+    detail: "주차 근거가 부족해서 카카오맵 확인이 필요합니다",
+    hint:
+      usableCount > 0 || trc
+        ? `참고 후보 ${usableCount + (trc ? 1 : 0)}곳을 아래에서 확인하세요.`
+        : null,
+    confidence: "low",
+    stress,
   };
 }
 

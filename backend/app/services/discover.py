@@ -35,6 +35,7 @@ import httpx
 from ..config import get_settings
 from ..utils.cache import TTLCache
 from ..utils.geo import haversine_m, walk_minutes_straight
+from . import congestion as congestion_svc
 from . import kakao as kakao_svc
 from . import naver_search, youtube_search
 
@@ -250,10 +251,14 @@ def discover_hot_places(
             + dist_score
             + cat_bonus
         )
+        cat_name = d.get("category_name") or ""
+        congestion = congestion_svc.predict(
+            cat_name or d.get("category_group_code")
+        ).to_dict()
         scored.append(
             {
                 "name": name,
-                "category": d.get("category_name"),
+                "category": cat_name or None,
                 "category_group_code": d.get("category_group_code"),
                 "phone": d.get("phone") or None,
                 "address": d.get("address_name"),
@@ -269,6 +274,7 @@ def discover_hot_places(
                 "naver_mentions": naver_mentions,
                 "tavily_mentions": tavily_mentions,
                 "region_label": region_label or None,
+                "congestion": congestion,
             }
         )
 
