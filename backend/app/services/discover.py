@@ -91,6 +91,12 @@ _CHAIN_KEYWORDS = {
         "매머드커피",
         "커피에반하다",
         "공차",
+        "쥬씨",
+        "카페베네",
+        "더본커피",
+        "백다방",
+        "더리터",
+        "매가커피",
     },
     "food": set(),
     "sights": set(),
@@ -209,14 +215,25 @@ def _count_mentions(snippets: list[str], name: str) -> int:
     return cnt
 
 
-# 추출된 매장명에서 걸러야 할 일반 단어 (지역/카테고리/형용사)
+# 추출된 매장명에서 걸러야 할 일반 단어 (지역/카테고리/형용사/일반해시태그)
 _NER_STOP_WORDS = {
+    # 일반 단어
     "추천", "맛집", "핫플", "카페", "디저트", "베이커리", "브런치",
     "분위기", "감성", "예쁜", "주차", "후기", "데이트", "성지", "올해",
     "최고", "오늘", "여기", "거기", "근처", "주변", "이번", "다녀온",
     "방문", "강추", "비추", "신상", "최신", "이번주", "이번달",
     "샵", "shop", "리뷰", "review", "vlog", "tour", "투어",
+    # 일반 해시태그
+    "카페추천", "맛집추천", "핫플레이스", "카페투어", "맛집투어",
+    "인스타감성", "인스타감성카페", "인스타카페", "감성카페",
+    "브런치카페", "디저트카페", "베이커리카페", "분위기좋은카페",
+    "브이로그", "vlog", "shorts", "쇼츠", "유튜브", "youtube",
+    "데일리", "일상", "오오티디", "오오티디룩", "ootd",
+    "주말", "휴일", "공휴일", "여행",
 }
+
+# Kakao category 에서 진짜 카페가 아닌 sub-category (제외 대상)
+_CAFE_SUBCAT_EXCLUDE = ("키즈카페", "스터디카페", "북카페", "보드게임카페", "pc방")
 
 
 def _extract_candidate_names(
@@ -277,6 +294,21 @@ def _extract_candidate_names(
         if region_core and nl.startswith(region_core) and len(nl) <= len(region_core) + 4:
             # "성수카페" / "성수동카페" 류 — 지역+카테고리 합성
             continue
+        # 일반 합성어 — "{지역}카페추천" / "이색카페" / "신상카페" 등 generic
+        if any(
+            suffix in nl
+            for suffix in (
+                "카페추천", "맛집추천", "카페투어", "맛집투어", "감성카페",
+                "이색카페", "신상카페", "감성맛집", "브이로그",
+            )
+        ):
+            continue
+        # "{prefix}카페" 인데 prefix 가 2자 이하 → 일반 합성어 가능성 ("새카페", "큰카페")
+        if nl.endswith("카페") and len(nl) <= 5:
+            continue
+        # 영문 일반 hashtag (vlog, ootd 등 — _NER_STOP_WORDS 에 있지만 대소문자 변형 방어)
+        if nl.isascii() and len(nl) <= 8:
+            continue
         out.append((name, freq))
         if len(out) >= 10:
             break
@@ -315,6 +347,11 @@ def _lookup_kakao_for_names(
                 continue
             if cat_code and cat_code not in (doc.get("category_group_code") or ""):
                 continue
+            # cafe 카테고리에서 키즈카페/스터디카페 등 sub-category 는 제외 — 인스타 핫플로는 부적합
+            if cat_code == "CE7":
+                cat_name = (doc.get("category_name") or "").lower()
+                if any(x in cat_name for x in _CAFE_SUBCAT_EXCLUDE):
+                    continue
             extras.append(doc)
             break  # 후보당 1건만
     return extras
