@@ -209,6 +209,132 @@ def _count_mentions(snippets: list[str], name: str) -> int:
     return cnt
 
 
+# 추출된 매장명에서 걸러야 할 일반 단어 (지역/카테고리/형용사)
+_NER_STOP_WORDS = {
+    "추천", "맛집", "핫플", "카페", "디저트", "베이커리", "브런치",
+    "분위기", "감성", "예쁜", "주차", "후기", "데이트", "성지", "올해",
+    "최고", "오늘", "여기", "거기", "근처", "주변", "이번", "다녀온",
+    "방문", "강추", "비추", "신상", "최신", "이번주", "이번달",
+    "샵", "shop", "리뷰", "review", "vlog", "tour", "투어",
+}
+
+
+def _extract_candidate_names(
+    youtube_items: list[dict],
+    naver_snippets: list[str],
+    tavily_snippets: list[str],
+    region_label: str,
+) -> list[tuple[str, int]]:
+    """블로그/유튜브 본문에서 매장명 후보를 자동 추출.
+
+    신호:
+      - 해시태그 `#성수옹근달` → "성수옹근달", "옹근달" (2배 가중)
+      - 따옴표 `'옹근달'` 안 단어 (1.5배)
+      - "{이름} 카페" / "{이름} 베이커리" / "{이름} 로스터스" 패턴 (1배)
+
+    노이즈 제거:
+      - 일반 단어 (추천/맛집/카페 등)
+      - 지역 이름 자체 (성수, 성수동)
+      - 2자 미만
+    """
+    from collections import Counter
+
+    parts: list[str] = []
+    for it in youtube_items:
+        parts.append(it.get("text") or "")
+    parts.extend(naver_snippets)
+    parts.extend(tavily_snippets)
+    combined = "\n".join(parts)
+
+    cands: Counter[str] = Counter()
+    for m in _HASHTAG_RE.finditer(combined):
+        tag = m.group(1).strip()
+        if tag:
+            cands[tag] += 2
+    for m in _QUOTED_RE.finditer(combined):
+        n = m.group(1).strip()
+        if n:
+            cands[n] += 1
+    for m in _NAME_BEFORE_CAFE_RE.finditer(combined):
+        n = m.group(1).strip()
+        if n:
+            cands[n] += 1
+
+    region_norm = _norm(region_label or "")
+    # region label 의 핵심 토큰 (e.g. "성수동" → "성수")
+    region_core = re.sub(r"동$", "", region_norm) if region_norm else ""
+
+    out: list[tuple[str, int]] = []
+    for name, freq in cands.most_common(30):
+        nl = name.lower().strip()
+        if len(nl) < 2:
+            continue
+        if nl in _NER_STOP_WORDS:
+            continue
+        # 지역명 자체 또는 "성수동" / "성수동카페" 류 제외
+        if region_norm and (nl == region_norm or nl == region_core):
+            continue
+        if region_core and nl.startswith(region_core) and len(nl) <= len(region_core) + 4:
+            # "성수카페" / "성수동카페" 류 — 지역+카테고리 합성
+            continue
+        out.append((name, freq))
+        if len(out) >= 10:
+            break
+    return out
+
+
+def _lookup_kakao_for_names(
+    names: list[tuple[str, int]],
+    region_label: str,
+    lat: float,
+    lng: float,
+    radius_m: int,
+    cat_code: str | None,
+) -> list[dict]:
+    """추출된 매장명 후보들을 Kakao keyword search 로 검증해서 docs 형태로 반환.
+
+    - 지역명 같이 붙여서 검색 (정확도↑)
+    - radius * 1.5 까지만 허용 (인근 도보권 확장)
+    - cat_code 가 있으면 카테고리 일치만 채택
+    """
+    extras: list[dict] = []
+    for name, _freq in names:
+        q = f"{name} {region_label}".strip() if region_label else name
+        try:
+            results = kakao_svc.search_keyword(q, size=2)
+        except kakao_svc.KakaoAPIError:
+            continue
+        for doc in results:
+            try:
+                dlat = float(doc["y"])
+                dlng = float(doc["x"])
+            except (KeyError, ValueError):
+                continue
+            dist = haversine_m(lat, lng, dlat, dlng)
+            if dist > radius_m * 1.5:
+                continue
+            if cat_code and cat_code not in (doc.get("category_group_code") or ""):
+                continue
+            extras.append(doc)
+            break  # 후보당 1건만
+    return extras
+
+
+def _filter_out_chains(docs: list[dict], category: Category) -> list[dict]:
+    """카테고리별 체인 brand 매장 제거 — 인스타 회자 인디 매장 노출 우대."""
+    chains = _CHAIN_KEYWORDS.get(category, set())
+    if not chains:
+        return docs
+    out = []
+    for d in docs:
+        name = (d.get("place_name") or "").lower()
+        name_norm = _norm(name)
+        if any(c in name_norm for c in chains):
+            continue
+        out.append(d)
+    return out
+
+
 def discover_hot_places(
     lat: float, lng: float, category: Category, limit: int = 3, radius_m: int = 1500
 ) -> list[dict]:
@@ -236,6 +362,9 @@ def discover_hot_places(
 
     if cat_code:
         docs = [d for d in docs if cat_code in (d.get("category_group_code") or "")]
+
+    # 체인 brand 제거 — 인스타 회자 인디 매장 우대
+    docs = _filter_out_chains(docs, category)
 
     if not docs:
         _CACHE.set(cache_key, [])
@@ -299,6 +428,33 @@ def discover_hot_places(
                     if not isinstance(r, dict):
                         continue
                     tavily_snippets.append(f"{r.get('title') or ''} {r.get('content') or ''}")
+
+    # 3.5) 검색 결과에서 매장명 자동 추출 → 카카오 lookup → docs pool 보강.
+    #      카카오는 거리순 체인 위주를 주는데, 실제 인스타 회자 매장은 인디.
+    #      해시태그 #성수옹근달 / "옹근달" / "옹근달 카페" 같은 패턴에서 매장명 추출.
+    extra_docs: list[dict] = []
+    if region_label:
+        try:
+            extracted = _extract_candidate_names(
+                youtube_items, naver_snippets, tavily_snippets, region_label
+            )
+            if extracted:
+                extra_docs = _lookup_kakao_for_names(
+                    extracted, region_label, lat, lng, radius_m, cat_code
+                )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("discover NER failed: %s", e)
+
+    # 추출된 인디 매장을 docs 앞에 두고 (정렬 시 점수 가산 받음) dedup
+    if extra_docs:
+        seen_names = {_norm(d.get("place_name") or "") for d in docs}
+        for d in extra_docs:
+            n = _norm(d.get("place_name") or "")
+            if n and n not in seen_names:
+                seen_names.add(n)
+                docs.append(d)
+        # 추가된 매장도 체인 필터 1회 더 (Kakao lookup 결과에 체인이 섞일 수 있음)
+        docs = _filter_out_chains(docs, category)
 
     # 4) 점수 산정
     scored: list[dict] = []
