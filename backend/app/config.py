@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     NAVER_CLIENT_ID: str = ""
     NAVER_CLIENT_SECRET: str = ""
 
+    # YouTube Data API v3 — 핫플 추천에 조회수 가중치로 사용 (무료, 일 10k unit)
+    # 발급: https://console.cloud.google.com → APIs & Services → Credentials
+    YOUTUBE_API_KEY: str = ""
+
     # Anthropic API (LLM 자연어 요약). 없으면 graceful skip.
     # 발급: https://console.anthropic.com → API Keys
     ANTHROPIC_API_KEY: str = ""
