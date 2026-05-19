@@ -90,28 +90,72 @@ def _tavily_search(query: str, api_key: str, max_results: int = 10) -> list[dict
 
 
 _NORM_RE = re.compile(r"[\s\-_·()\[\]/\\,]+")
+# 매장명에서 가지점·매장 suffix 만 잘라내고 핵심 단어를 보존
+_BRANCH_SUFFIX_RE = re.compile(r"(점|지점|매장|본점|역점|분점)$")
+_TOKEN_SPLIT_RE = re.compile(r"[\s\-/&·()\[\]_,\\]+")
+# 토큰 자체로 의미없는 단어
+_STOP_TOKENS = {"점", "지점", "매장", "동", "역", "카페", "음식점", "the"}
 
 
 def _norm(s: str) -> str:
     return _NORM_RE.sub("", (s or "")).lower()
 
 
+def _name_tokens(name: str) -> list[str]:
+    """매장명을 핵심 토큰 리스트로 분해.
+
+    "스타벅스 성수점" → ["스타벅스", "성수"]
+    "에낭 성수점"   → ["에낭",   "성수"]
+    "더홈"          → ["더홈"]
+
+    가지점 suffix 떼고, 2글자 미만 / stop tokens 제거.
+    매칭 시 모든 토큰이 텍스트(정규화) 안에 등장해야 hit.
+    """
+    if not name:
+        return []
+    raw = _TOKEN_SPLIT_RE.split(name)
+    out: list[str] = []
+    for p in raw:
+        if not p:
+            continue
+        # 가지점 suffix 제거
+        p = _BRANCH_SUFFIX_RE.sub("", p)
+        p_lower = p.lower()
+        if len(p_lower) < 2 or p_lower in _STOP_TOKENS:
+            continue
+        out.append(p_lower)
+    # dedup, 순서 유지
+    seen: set[str] = set()
+    uniq: list[str] = []
+    for t in out:
+        if t in seen:
+            continue
+        seen.add(t)
+        uniq.append(t)
+    return uniq
+
+
+def _all_tokens_in_text(tokens: list[str], normalized_text: str) -> bool:
+    if not tokens or not normalized_text:
+        return False
+    return all(t in normalized_text for t in tokens)
+
+
 def _youtube_score(items: list[dict], name: str) -> tuple[float, int, int]:
-    """매장 이름이 들어있는 YouTube 영상들의 log10(views+1) 합산.
+    """매장 이름의 모든 핵심 토큰이 들어있는 YouTube 영상들의 log10(views+1) 합산.
 
     Returns (score, matched_video_count, total_views).
-    score 는 정규화 안 함 (대형 채널 영상 1개로도 차이 크게 벌어지게 둠).
+    매칭 룰: 토큰 단위 (브랜드 + 지역 등 모두 등장 필요).
     """
-    if not items or not name:
-        return 0.0, 0, 0
-    nn = _norm(name)
-    if len(nn) < 2:
+    tokens = _name_tokens(name)
+    if not tokens:
         return 0.0, 0, 0
     score = 0.0
     matched = 0
     total_views = 0
     for it in items:
-        if nn in _norm(it.get("text") or ""):
+        text_norm = _norm(it.get("text") or "")
+        if _all_tokens_in_text(tokens, text_norm):
             matched += 1
             views = int(it.get("view_count") or 0)
             total_views += views
@@ -120,16 +164,13 @@ def _youtube_score(items: list[dict], name: str) -> tuple[float, int, int]:
 
 
 def _count_mentions(snippets: list[str], name: str) -> int:
-    if not name:
-        return 0
-    nn = _norm(name)
-    if len(nn) < 2:
+    """토큰 매칭으로 snippet 내 매장 언급 카운트."""
+    tokens = _name_tokens(name)
+    if not tokens:
         return 0
     cnt = 0
     for s in snippets:
-        if not s:
-            continue
-        if nn in _norm(s):
+        if _all_tokens_in_text(tokens, _norm(s)):
             cnt += 1
     return cnt
 
