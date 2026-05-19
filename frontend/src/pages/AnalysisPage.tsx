@@ -64,7 +64,9 @@ export default function AnalysisPage() {
   >(null);
   const [fav, setFav] = useState(false);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
-  const [sheetState, setSheetState] = useState<SheetState>("half");
+  // 모바일에서는 결과 카드들이 한눈에 보이도록 기본을 expanded 로 둔다.
+  // 사용자가 지도 보고 싶으면 핸들 / 헤더 탭으로 줄임.
+  const [sheetState, setSheetState] = useState<SheetState>("expanded");
 
   useEffect(() => {
     if (!data) return;

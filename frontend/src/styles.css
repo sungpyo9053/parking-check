@@ -972,34 +972,51 @@ button {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 .sheet-peek {
-  height: 240px;
+  height: 260px;
 }
 .sheet-half {
-  height: 70vh;
+  height: 78vh;
 }
 .sheet-expanded {
-  height: calc(100vh - 44px - env(safe-area-inset-top, 0));
+  /* expanded 상태에서는 상단 카드/지도가 거의 다 가려지고 결과만 본다. */
+  height: calc(100vh - 36px - env(safe-area-inset-top, 0));
 }
 
-/* 핸들 — tap area 키워서 슬라이드 쉽게 잡을 수 있게 */
+/* 핸들 — tap area 키움 + 텍스트 힌트로 affordance 명확 */
 .sheet-handle-btn {
   background: transparent;
   border: none;
-  padding: 14px 0 8px;
+  padding: 10px 0 6px;
   cursor: pointer;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
   width: 100%;
 }
 .sheet-handle-btn:hover .sheet-handle-bar {
   background: #94a3b8;
 }
 .sheet-handle-bar {
-  width: 56px;
+  width: 60px;
   height: 5px;
   border-radius: var(--radius-full);
   background: #cbd5e1;
   transition: background 120ms ease-out, width 120ms ease-out;
+}
+.sheet-handle-hint {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.1px;
+}
+
+/* peek 영역 자체도 탭으로 시트 토글 — 작은 핸들만 누르는 부담 줄임 */
+.sheet-peek-tap {
+  cursor: pointer;
+}
+.sheet-peek-tap:active {
+  background: rgba(15, 23, 42, 0.02);
 }
 
 /* PEEK 영역 — 항상 보이는 핵심 판단 (verdict pill) */
