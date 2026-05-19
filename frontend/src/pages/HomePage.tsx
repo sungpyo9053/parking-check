@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api, FavoriteItemOut } from "../lib/api";
 import { useRecentSearches } from "../hooks/useRecentSearches";
 import DiscoverHot from "../components/DiscoverHot";
@@ -175,6 +175,27 @@ export default function HomePage() {
       </form>
 
       <DiscoverHot />
+
+      <div className="home-mode-cards">
+        <Link to="/judge" className="home-mode-card home-mode-card-judge">
+          <span className="home-mode-emoji">⚖️</span>
+          <div className="home-mode-body">
+            <div className="home-mode-title">약속 장소 심판</div>
+            <div className="home-mode-sub">
+              후보 2~5곳 비교 → 차량 방문 안전 1등 선정
+            </div>
+          </div>
+        </Link>
+        <Link to="/basecamp" className="home-mode-card home-mode-card-basecamp">
+          <span className="home-mode-emoji">🅿️</span>
+          <div className="home-mode-body">
+            <div className="home-mode-title">베이스캠프 모드</div>
+            <div className="home-mode-sub">
+              차 한번 대고 도보로 놀기 좋은 동네 코스
+            </div>
+          </div>
+        </Link>
+      </div>
 
       <h2 className="h2">★ 공유 즐겨찾기</h2>
       {group ? (

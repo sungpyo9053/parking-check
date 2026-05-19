@@ -5,6 +5,8 @@ import PlaceSelectPage from "./pages/PlaceSelectPage";
 import AnalysisPage from "./pages/AnalysisPage";
 import VisitLogPage from "./pages/VisitLogPage";
 import VisitListPage from "./pages/VisitListPage";
+import JudgePage from "./pages/JudgePage";
+import BasecampPage from "./pages/BasecampPage";
 
 export const router = createBrowserRouter([
   {
@@ -16,6 +18,8 @@ export const router = createBrowserRouter([
       { path: "analyze", element: <AnalysisPage /> },
       { path: "visits/new", element: <VisitLogPage /> },
       { path: "visits", element: <VisitListPage /> },
+      { path: "judge", element: <JudgePage /> },
+      { path: "basecamp", element: <BasecampPage /> },
     ],
   },
 ]);
