@@ -278,45 +278,66 @@ button {
   color: var(--muted);
 }
 
-/* parking card */
+/* parking card — 가독성 우선: 폰트/패딩 키움 */
 .pcard {
-  background: var(--card);
-  border-radius: 12px;
-  padding: 12px 14px;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-md);
+  padding: 16px 16px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  border: 1px solid transparent;
+  gap: var(--space-2);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 
 .pcard .head {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
 }
 
 .pcard .name {
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-section);
+  letter-spacing: -0.2px;
+  color: var(--color-text-primary);
+  line-height: 1.3;
 }
 
 .pcard .meta {
-  font-size: 12px;
-  color: var(--muted);
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
   display: flex;
   flex-wrap: wrap;
   gap: 4px 10px;
+  line-height: var(--line-height-body);
+}
+.pcard .meta.meta-walk strong {
+  font-size: var(--font-size-section);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-bold);
+}
+.pcard .meta.muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-meta);
 }
 
 .pcard .reasons {
-  font-size: 12px;
-  color: var(--muted);
+  font-size: var(--font-size-meta);
+  color: var(--color-text-muted);
 }
 
 .pcard .actions {
   display: flex;
-  gap: 8px;
-  margin-top: 6px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.pcard .actions .btn {
+  padding: 12px 14px;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-md);
 }
 
 .btn {
@@ -951,28 +972,34 @@ button {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 .sheet-peek {
-  height: 200px;
+  height: 240px;
 }
 .sheet-half {
-  height: 55vh;
+  height: 70vh;
 }
 .sheet-expanded {
-  height: calc(100vh - 60px - env(safe-area-inset-top, 0));
+  height: calc(100vh - 44px - env(safe-area-inset-top, 0));
 }
 
+/* 핸들 — tap area 키워서 슬라이드 쉽게 잡을 수 있게 */
 .sheet-handle-btn {
   background: transparent;
   border: none;
-  padding: 8px 0 4px;
+  padding: 14px 0 8px;
   cursor: pointer;
   display: flex;
   justify-content: center;
+  width: 100%;
+}
+.sheet-handle-btn:hover .sheet-handle-bar {
+  background: #94a3b8;
 }
 .sheet-handle-bar {
-  width: 40px;
-  height: 4px;
-  border-radius: 999px;
-  background: #d1d5db;
+  width: 56px;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background: #cbd5e1;
+  transition: background 120ms ease-out, width 120ms ease-out;
 }
 
 /* PEEK 영역 — 항상 보이는 핵심 판단 (verdict pill) */
@@ -1676,13 +1703,16 @@ button {
   color: #374151;
 }
 
-/* SHEET BODY — 스크롤 가능 본문 */
+/* SHEET BODY — 스크롤 가능 본문. 좁은 viewport 에서 답답하지 않게 패딩 키움. */
 .sheet-body {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 8px 16px 16px;
+  padding: 12px 18px 32px;
   overscroll-behavior: contain;
+}
+.sheet-body > * + * {
+  margin-top: var(--space-3);
 }
 .sheet-peek .sheet-body {
   overflow-y: hidden;
