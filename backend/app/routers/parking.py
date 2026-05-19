@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import Place, PlaceSelfParkingFeedback
+from ..db import SessionLocal
+from ..models import Place, PlaceSelfParkingFeedback, SearchLog
 from ..schemas.parking import (
     AnalyzeResponse,
     AnalyzeSummary,
@@ -99,13 +100,35 @@ def nearby(
     return NearbyResponse(count=len(items), radius=radius, items=items)
 
 
+def _persist_search_log(payload: dict) -> None:
+    """fire-and-forget DB insert. 실패는 조용히 로그만 — 사용자 응답에 영향 없게."""
+    try:
+        with SessionLocal() as s:
+            s.add(SearchLog(**payload))
+            s.commit()
+    except Exception as e:  # noqa: BLE001
+        import logging
+
+        logging.getLogger(__name__).warning("search_log insert failed: %s", e)
+
+
 @router.get("/analyze", response_model=AnalyzeResponse)
 def analyze(
+    background: BackgroundTasks,
+    request: Request,
     place_id: Optional[int] = Query(None),
     lat: Optional[float] = Query(None),
     lng: Optional[float] = Query(None),
+    name: Optional[str] = Query(
+        None,
+        description=(
+            "매장 이름 (선택). place_id 가 없을 때 자체주차 웹 검색 키워드로 사용. "
+            "Kakao keyword search 에서 좌표만 가져온 경우 반드시 전달해야 정확도가 올라간다."
+        ),
+    ),
     radius: int = Query(500, ge=50, le=3000),
     limit: int = Query(20, ge=1, le=50),
+    user_token: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ) -> AnalyzeResponse:
     # 목적지 결정
@@ -120,7 +143,8 @@ def analyze(
         dest_addr = dest_place.road_address or dest_place.address
     elif lat is not None and lng is not None:
         dest_lat, dest_lng = lat, lng
-        dest_name = None
+        # name 이 주어졌으면 자체주차 웹 검색 키워드로 활용. 없으면 None.
+        dest_name = name.strip() if name and name.strip() else None
         dest_addr = None
     else:
         raise HTTPException(status_code=400, detail="place_id 또는 lat+lng 가 필요합니다.")
@@ -334,7 +358,7 @@ def analyze(
         if menu_items:
             menu_block = MenuBlock(items=[MenuItem(**m) for m in menu_items])
 
-    return AnalyzeResponse(
+    response = AnalyzeResponse(
         destination=Destination(
             place_id=dest_place.id if dest_place else None,
             name=dest_name,
@@ -370,3 +394,31 @@ def analyze(
         history_for_destination=history_dest_rows,
         disclaimers=disclaimers,
     )
+
+    # 검색 로그 (운영자 분석용, 백그라운드 — fire-and-forget)
+    try:
+        background.add_task(
+            _persist_search_log,
+            {
+                "place_id": dest_place.id if dest_place else None,
+                "place_name": dest_name,
+                "lat": dest_lat,
+                "lng": dest_lng,
+                "radius_m": radius,
+                "self_parking_status": self_parking.status,
+                "top_recommendation_name": (
+                    top_rec.candidate.name if top_rec else None
+                ),
+                "top_recommendation_walking_min": (
+                    top_rec.candidate.walking_minutes if top_rec else None
+                ),
+                "external_candidate_count": len(external_candidates),
+                "user_token": user_token,
+                "user_agent": request.headers.get("user-agent"),
+                "referer": request.headers.get("referer"),
+            },
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+    return response

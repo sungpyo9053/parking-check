@@ -264,6 +264,7 @@ export default function AnalysisPage() {
       setError("place_id 또는 lat+lng 가 필요합니다.");
       return;
     }
+    if (placeName) params.name = placeName;
     api
       .analyze(params)
       .then((d) => {

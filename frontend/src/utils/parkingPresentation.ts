@@ -75,11 +75,11 @@ function _computeStress(data: AnalyzeResponse): {
   const score = Math.max(0, Math.min(100, Math.round(s)));
   const level: StressLevel = score >= 61 ? "high" : score >= 31 ? "medium" : "low";
 
+  // 가이드 카피 + 위험도별 부연 한 줄
   let cue: string | null = null;
-  if (score >= 80) cue = "초보 운전자에게 매우 어려움";
-  else if (score >= 65) cue = "초보 운전자면 비추천";
-  else if (score <= 20) cue = "차 가져가도 부담 없음";
-  else if (score <= 35) cue = "차 가져가도 괜찮음";
+  if (level === "high") cue = "도착해서 당황할 가능성이 있어요";
+  else if (level === "medium") cue = "방문 전 확인이 좋아요";
+  else cue = "초행길이어도 무난해요";
 
   return { score, level, cue };
 }

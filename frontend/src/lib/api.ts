@@ -233,12 +233,15 @@ export const api = {
     lat?: number;
     lng?: number;
     radius?: number;
+    /** 매장명 (place_id 미상 + 카카오 검색에서 좌표만 가져온 경우 web 검색 키워드로 사용). */
+    name?: string;
   }) => {
     const q = new URLSearchParams();
     if (params.place_id != null) q.set("place_id", String(params.place_id));
     if (params.lat != null) q.set("lat", String(params.lat));
     if (params.lng != null) q.set("lng", String(params.lng));
     if (params.radius) q.set("radius", String(params.radius));
+    if (params.name) q.set("name", params.name);
     return request<AnalyzeResponse>(`/api/parking/analyze?${q.toString()}`);
   },
 
