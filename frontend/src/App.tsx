@@ -7,23 +7,21 @@ export default function App() {
   const loc = useLocation();
   const isHome = loc.pathname === "/";
   return (
-    <div className="app">
-      <header className="topbar">
-        {!isHome ? (
+    <div className={`app ${isHome ? "app-home" : ""}`}>
+      {!isHome && (
+        <header className="topbar">
           <Link to={-1 as any} className="back-btn" aria-label="back">
             ‹
           </Link>
-        ) : (
-          <span style={{ width: 24 }} />
-        )}
-        <Link to="/" className="brand">
-          주차될까
-        </Link>
-        <Link to="/visits" className="hist-btn" aria-label="visits">
-          기록
-        </Link>
-      </header>
-      <main className="content">
+          <Link to="/" className="brand">
+            주차될까
+          </Link>
+          <Link to="/visits" className="hist-btn" aria-label="visits">
+            기록
+          </Link>
+        </header>
+      )}
+      <main className={isHome ? "content content-home" : "content"}>
         <Outlet />
       </main>
       <footer className="disclaimer">

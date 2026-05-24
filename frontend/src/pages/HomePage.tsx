@@ -3,7 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { api, FavoriteItemOut } from "../lib/api";
 import { useRecentSearches } from "../hooks/useRecentSearches";
 import DiscoverHot from "../components/DiscoverHot";
-import LandingHero from "../components/LandingHero";
+import LandingHeader from "../components/landing/LandingHeader";
+import LandingHero from "../components/landing/LandingHero";
+import LandingProblem from "../components/landing/LandingProblem";
+import LandingSolution from "../components/landing/LandingSolution";
+import LandingExample from "../components/landing/LandingExample";
+import LandingTrust from "../components/landing/LandingTrust";
+import LandingFinalCTA from "../components/landing/LandingFinalCTA";
 import { Favorite, listFavorites, removeFavorite } from "../lib/favorites";
 import {
   StoredGroup,
@@ -156,9 +162,32 @@ export default function HomePage() {
     navigate(`/places?q=${encodeURIComponent(query)}`);
   }
 
+  function focusSearch() {
+    const el = document.querySelector<HTMLInputElement>(".lh-search-row input");
+    if (el) {
+      el.focus();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
   return (
     <div className="home-page">
+      <LandingHeader onSearchClick={focusSearch} />
       <LandingHero query={q} onQueryChange={setQ} onSubmit={submit} />
+
+      <div id="section-problem">
+        <LandingProblem />
+      </div>
+      <div id="section-solution">
+        <LandingSolution />
+      </div>
+      <div id="section-example">
+        <LandingExample />
+      </div>
+      <div id="section-trust">
+        <LandingTrust />
+      </div>
+      <LandingFinalCTA query={q} onQueryChange={setQ} onSubmit={submit} />
 
       <div className="home-after-hero">
         <DiscoverHot />
