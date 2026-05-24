@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import type { AnalyzeResponse } from "../../types/parking";
 import { openKakaoFootRoute } from "../../lib/maps";
 import { api, KakaoPlaceDetail } from "../../lib/api";
+import NumberTicker from "../NumberTicker";
+import Skeleton from "../Skeleton";
 import {
   distanceSourceLabel,
   kindLabel,
@@ -111,7 +113,9 @@ export default function PlanACard({ data, destName }: Props) {
       <div className="top-rec-headline">
         {c.walking_minutes != null ? (
           <>
-            <span className="top-rec-walk-big">도보 {c.walking_minutes}</span>
+            <span className="top-rec-walk-big">
+              도보 <NumberTicker value={c.walking_minutes} duration={650} />
+            </span>
             <span className="top-rec-walk-unit">분</span>
           </>
         ) : (
@@ -126,8 +130,8 @@ export default function PlanACard({ data, destName }: Props) {
         {reason}
         {distM != null && (
           <span className="top-rec-dist">
-            {" "}
-            · {distM}m ({distanceSourceLabel(c.walking_route_source)})
+            {" "}· <NumberTicker value={distM} duration={650} />m (
+            {distanceSourceLabel(c.walking_route_source)})
           </span>
         )}
       </div>
@@ -135,7 +139,14 @@ export default function PlanACard({ data, destName }: Props) {
       {kakaoPid && (
         <div className="top-rec-detail">
           {detail === undefined && (
-            <div className="top-rec-detail-loading">카카오맵에서 요금/시간 정보 불러오는 중…</div>
+            <div className="top-rec-detail-skeleton">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div className="top-rec-detail-sk-row" key={i}>
+                  <Skeleton width={48} height={11} radius={6} />
+                  <Skeleton width={120 + (i % 3) * 18} height={13} radius={6} />
+                </div>
+              ))}
+            </div>
           )}
           {detail === null && (
             <div className="top-rec-detail-empty">

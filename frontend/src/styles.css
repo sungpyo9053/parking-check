@@ -915,6 +915,17 @@ button {
   color: var(--color-text-muted);
   padding: 4px 0;
 }
+.top-rec-detail-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0;
+}
+.top-rec-detail-sk-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
 .top-rec-detail-list {
   list-style: none;
   margin: 0;
@@ -1118,6 +1129,15 @@ button {
 }
 .analyze-error {
   color: var(--risky);
+}
+.analyze-loading-wrap {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% - 32px);
+  max-width: 440px;
+  z-index: 25;
 }
 
 /* ─── 바텀시트 ─── */
@@ -1656,6 +1676,53 @@ button {
 /* ============================================================ */
 /* Home mode entries (/judge, /basecamp)                        */
 /* ============================================================ */
+/* Skeleton shimmer — 토스/배민 톤 회색 그라데이션이 좌→우 흐름.
+   prefers-reduced-motion 사용자에게는 정적 회색 박스만 보임. */
+@keyframes sk-shimmer-flow {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.sk-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-soft) 0%,
+    #e5e8eb 50%,
+    var(--color-bg-soft) 100%
+  );
+  background-size: 200% 100%;
+  animation: sk-shimmer-flow 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk-shimmer { animation: none; background: var(--color-bg-soft); }
+}
+.sk-analysis {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 18px 16px 16px;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: var(--shadow-card);
+}
+.sk-analysis-row { display: flex; justify-content: space-between; }
+.sk-analysis-meta {
+  display: flex; gap: 12px; margin-top: 12px;
+}
+.sk-analysis-detail {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-top: 14px; padding: 10px 12px;
+  background: var(--color-bg-soft);
+  border-radius: var(--radius-sm);
+}
+.sk-analysis-detail-row {
+  display: flex; gap: 12px; align-items: center;
+}
+.sk-analysis-btns {
+  display: flex; gap: 8px; margin-top: 14px;
+}
+.sk-analysis-btns > * { flex: 1; }
+
 /* Hero 워드사이클링 — 배민/토스 메인 톤. 큰 hero 영역 + 단어만 위로 슬라이드. */
 .hero-wrap {
   padding: 28px 4px 24px;

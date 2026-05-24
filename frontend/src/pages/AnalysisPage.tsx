@@ -30,6 +30,7 @@ import { isFavorite, toggleFavorite } from "../lib/favorites";
 import { getGroup } from "../lib/favoritesGroup";
 import { sharePage } from "../lib/share";
 import ShareImageCard from "../components/analysis/ShareImageCard";
+import { AnalysisSkeleton } from "../components/Skeleton";
 
 function getUserToken(): string {
   try {
@@ -448,7 +449,11 @@ export default function AnalysisPage() {
       </div>
 
       {error && <div className="analyze-error">{error}</div>}
-      {!data && !error && <div className="analyze-loading">분석 중...</div>}
+      {!data && !error && (
+        <div className="analyze-loading-wrap">
+          <AnalysisSkeleton />
+        </div>
+      )}
 
       {data && verdict && selfCopy && dest && (
         <AnalysisBottomSheet
