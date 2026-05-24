@@ -371,7 +371,15 @@ def collect_external_candidates(
         except Exception as e:  # noqa: BLE001 — 폴백은 절대 라우터 전체를 죽이지 않는다
             logger.warning("web search fallback failed: %s", e)
             web_items = []
-        web_ext = [_web_result_to_external(i) for i in web_items]
+        # 부동산/경매/광고/맛집 노이즈 필터 — _WEB_NEGATIVE_KEYWORDS 매칭은 제외,
+        # _WEB_POSITIVE_KEYWORDS 매칭은 통과. 둘 다 없으면 confidence 낮다 보고 제외.
+        web_items_filtered = [i for i in web_items if _is_web_result_relevant(i)]
+        if len(web_items) != len(web_items_filtered):
+            logger.info(
+                "web_search filter: %d -> %d (dropped %d)",
+                len(web_items), len(web_items_filtered), len(web_items) - len(web_items_filtered),
+            )
+        web_ext = [_web_result_to_external(i) for i in web_items_filtered]
         web_ext = _dedup(db_existing + external, web_ext)
         info.web_search_count = len(web_ext)
         external.extend(web_ext)
