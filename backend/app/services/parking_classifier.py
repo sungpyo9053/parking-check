@@ -108,16 +108,33 @@ PAID_OPEN_HINTS: tuple[str, ...] = (
     "주차빌딩",
 )
 
-# 잘 알려진 브랜드 주차 운영사 (보통 누구나 이용)
+# 잘 알려진 브랜드 주차 운영사 (보통 누구나 이용).
+# 카카오 표기 변형이 많아서 substring 매칭 (예: "카카오T 판교알파돔타워 주차장" 도
+# "카카오T" 로 통과). 회사 사옥 직원전용 케이스와 혼동 위험은 낮음 — 카카오T/티맵
+# 같은 브랜드 운영사는 일반 시간제 유료 주차로 운영됨.
 OPEN_OPERATOR_BRANDS: tuple[str, ...] = (
     "나이스파크",
     "AJ파크",
     "윌슨파킹",
     "GS파크24",
     "T맵주차",
-    "카카오T주차",
+    "티맵주차",
+    "카카오T",  # "카카오T주차" → "카카오T" 로 완화: 카카오 표기 변형이 많음
     "하이파크",
     "현대오일뱅크 주차",
+)
+
+# 목적지명이 이 접미사로 끝나면 "목적지 자체 주차장" 매칭(_destination_match) 을
+# 비활성화 — 역/공항/터미널은 그 일대 전체를 가리키는 거지 단일 건물이 아니라서
+# 주변 빌딩명에 substring 매칭되면 잘못된 self-parking 추천이 나옴.
+# (예: dest="강남역" → "강남역센트럴푸르지오시티 주차장" 이 매장 자체로 매칭)
+TRANSIT_DEST_SUFFIXES: tuple[str, ...] = (
+    "역",
+    "공항",
+    "터미널",
+    "정류장",
+    "IC",
+    "톨게이트",
 )
 
 
@@ -158,11 +175,18 @@ def _destination_match(name: str, destination_name: str | None) -> bool:
     d_norm = _norm(destination_name)
     if not n_norm or not d_norm or len(d_norm) < 2:
         return False
+
+    # 교통 시설 목적지 (역/공항/터미널 등) 는 self-parking 매칭 자체가 의미 없음.
+    # 첫 토큰(보통 고유명)이 TRANSIT_DEST_SUFFIXES 로 끝나면 전체 비활성화.
+    import re as _re
+    head_tokens = _re.findall(r"[가-힣A-Za-z0-9]+", destination_name)
+    if head_tokens and head_tokens[0].endswith(TRANSIT_DEST_SUFFIXES):
+        return False
+
     if d_norm in n_norm:
         return True
 
     # 토큰 단위 매칭. 한국어/영문/숫자 토큰 분리.
-    import re as _re
     tokens = _re.findall(r"[가-힣A-Za-z0-9]+", destination_name)
     GENERIC = {
         "주차장", "주차", "본점", "지점", "점", "센터", "타워", "빌딩",
