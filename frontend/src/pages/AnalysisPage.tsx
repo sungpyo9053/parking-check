@@ -29,6 +29,7 @@ import ResultVerdictCard from "../components/analysis/ResultVerdictCard";
 import JudgmentReasonCard from "../components/analysis/JudgmentReasonCard";
 import RecommendedActionCard from "../components/analysis/RecommendedActionCard";
 import { applySeo } from "../lib/seo";
+import { buildParkingResult } from "../utils/parkingResult";
 
 function getUserToken(): string {
   try {
@@ -400,23 +401,48 @@ export default function AnalysisPage() {
   }
 
   const verdict = data ? buildVerdict(data) : null;
+  const parkingResult = data ? buildParkingResult(data, placeName) : null;
 
   // SEO — 동적 title/og 메타. 장소명 기반.
   useEffect(() => {
-    if (!data || !verdict) return;
-    const name = data.destination.name || placeName || "분석 결과";
-    const desc =
-      verdict.kind === "good"
-        ? `${name}의 주차 가능성을 확인하세요. 자체 주차 가능성·근처 주차장·도보 거리 한 번에.`
-        : verdict.kind === "bad"
-          ? `${name} 차량 방문 시 주차가 어려울 수 있습니다. 대중교통 추천 정보를 확인하세요.`
-          : `${name}은(는) 주차 정보가 명확하지 않아 방문 전 주변 주차장을 먼저 확인하는 것을 추천합니다.`;
+    if (!parkingResult) return;
+    const name = parkingResult.placeName;
+    const desc = `${name} 방문 전 주차 난이도, 주변 주차장 후보, 차량 방문 추천 여부를 확인하세요.`;
     applySeo({
       title: `${name} 주차될까? | 주차 가능성 분석`,
       description: desc,
       url: typeof window !== "undefined" ? window.location.href : undefined,
     });
-  }, [data, verdict, placeName]);
+  }, [parkingResult]);
+
+  // 상단 재검색 — 현재 장소명을 보여주고 수정 가능
+  const [topSearchQ, setTopSearchQ] = useState(placeName);
+  useEffect(() => setTopSearchQ(placeName), [placeName]);
+
+  // 공유 toast (Web Share API 미지원 시 URL 복사)
+  const [copyToast, setCopyToast] = useState<string | null>(null);
+  async function shareWithFallback() {
+    const name = parkingResult?.placeName ?? placeName;
+    const url = window.location.href;
+    const text = `${name} 주차될까? 차량 방문 전 주차 난이도와 주변 주차장 후보를 확인해보세요.`;
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: `${name} 주차될까?`, text, url });
+        return;
+      } catch (e) {
+        const err = e instanceof Error ? e : new Error(String(e));
+        if (err.name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopyToast("결과 링크를 복사했어요.");
+      setTimeout(() => setCopyToast(null), 2400);
+    } catch {
+      setCopyToast("복사에 실패했어요. URL 을 직접 복사해 주세요.");
+      setTimeout(() => setCopyToast(null), 2400);
+    }
+  }
   const selfCopy = data ? selfParkingCopy(data) : null;
   const dest = data?.destination;
   const destName = data?.destination.name || placeName || "목적지";
@@ -463,33 +489,95 @@ export default function AnalysisPage() {
         )}
       </div>
 
-      {error && <div className="analyze-error">{error}</div>}
+      {error && (
+        <div className="analyze-error-wrap">
+          <div className="analyze-error-card">
+            <div className="analyze-error-title">분석 결과를 불러오지 못했어요</div>
+            <div className="analyze-error-sub">
+              잠시 후 다시 시도하거나 다른 장소를 검색해 주세요.
+            </div>
+            <div className="analyze-error-actions">
+              <button
+                className="lh-hero-cta"
+                type="button"
+                onClick={() => window.location.reload()}
+              >
+                다시 시도
+              </button>
+              <button
+                className="btn"
+                type="button"
+                onClick={() => navigate("/")}
+              >
+                다른 장소 검색
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {!data && !error && (
         <div className="analyze-loading-wrap">
+          <div className="analyze-loading-copy">
+            <div className="analyze-loading-title">주차 정보를 분석하고 있어요</div>
+            <div className="analyze-loading-sub">
+              장소 정보와 주변 주차장 후보를 확인하는 중입니다.
+            </div>
+          </div>
           <AnalysisSkeleton />
         </div>
       )}
 
-      {data && verdict && selfCopy && dest && (
+      {data && verdict && selfCopy && dest && parkingResult && (
         <AnalysisBottomSheet
           state={sheetState}
           onChangeState={setSheetState}
-          peek={
-            <ResultVerdictCard
-              destName={destName}
-              verdict={verdict}
-              data={data}
-            />
-          }
+          peek={<ResultVerdictCard result={parkingResult} />}
           body={
             <>
-              {/* 2. 판단 근거 */}
-              <JudgmentReasonCard data={data} verdict={verdict} />
+              {/* 상단 재검색 — 현재 장소명 수정 가능 */}
+              <form
+                className="lh-hero-search result-top-search"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const q = topSearchQ.trim();
+                  if (!q) return;
+                  navigate(`/places?q=${encodeURIComponent(q)}`);
+                }}
+              >
+                <div className="lh-search-row">
+                  <span className="lh-search-icon" aria-hidden>🔎</span>
+                  <input
+                    type="search"
+                    inputMode="search"
+                    value={topSearchQ}
+                    onChange={(e) => setTopSearchQ(e.target.value)}
+                    placeholder="다른 장소를 검색해보세요"
+                  />
+                </div>
+                <button type="submit" className="lh-hero-cta">
+                  주차 가능성 확인
+                </button>
+              </form>
 
-              {/* 3. 1순위 주차 플랜 (검색 결과의 핵심 답) */}
+              {/* 판단 근거 */}
+              <JudgmentReasonCard result={parkingResult} />
+
+              {/* 추천 행동 (결론 → 근거 → 행동 순서) */}
+              <RecommendedActionCard
+                result={parkingResult}
+                destLat={dest.lat}
+                destLng={dest.lng}
+                onShare={shareWithFallback}
+                onScrollToNearby={() => {
+                  const el = document.getElementById("anchor-nearby-parking");
+                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              />
+
+              {/* 1순위 주차 플랜 */}
               <PlanACard data={data} destName={destName} />
 
-              {/* 4. 주변 주차장 후보 — anchor 로 RecommendedAction 의 "근처 확인" 버튼이 스크롤 */}
+              {/* 근처 주차장 후보 */}
               <div id="anchor-nearby-parking">
                 <ParkingCandidateSection
                   dbCandidates={data.candidates}
@@ -503,17 +591,7 @@ export default function AnalysisPage() {
                 />
               </div>
 
-              {/* 5. 추천 행동 */}
-              <RecommendedActionCard
-                destName={destName}
-                onShare={doShare}
-                onScrollToNearby={() => {
-                  const el = document.getElementById("anchor-nearby-parking");
-                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
-              />
-
-              {/* 조건부: 자체주차 어렵거나 모름이면 PlanB / 대체 장소 추천 */}
+              {/* 조건부: PlanB / 대체 장소 */}
               {(verdict.kind === "caution" ||
                 verdict.kind === "bad" ||
                 verdict.kind === "unknown") && (
@@ -528,7 +606,7 @@ export default function AnalysisPage() {
                 </>
               )}
 
-              {/* 보조 (접힘): 자체 주차 evidence + 사용자 피드백 */}
+              {/* 보조: 자체 주차 evidence + 사용자 피드백 */}
               <SelfParkingCard
                 data={data}
                 copy={selfCopy}
@@ -545,18 +623,22 @@ export default function AnalysisPage() {
                 onSubmit={({ answer, note }) => sendFeedback(answer, note)}
               />
 
-              {/* 6. 주의 문구 + 데이터 출처 */}
+              {/* 주의 문구 */}
               <div className="result-disclaimer">
                 <p>
-                  <strong>방문 전 참고용 정보입니다.</strong> 실시간 주차 가능 대수,
-                  요금, 운영 여부는 실제 현장 상황과 다를 수 있습니다.
+                  <strong>이 결과는 방문 전 참고용 정보입니다.</strong> 실시간 주차
+                  가능 대수, 요금, 운영 여부는 실제 현장 상황과 다를 수 있습니다.
+                </p>
+                <p className="result-disclaimer-sub">
+                  정확한 주차 가능 여부는 방문 전 지도 앱, 주차장 운영 정보, 매장 안내를
+                  함께 확인해 주세요.
                 </p>
               </div>
               <DataBasisPanel />
 
-              {/* 하단 재검색 */}
+              {/* 다른 장소 검색 */}
               <div className="result-research">
-                <h3 className="result-research-title">다른 장소도 확인할까요?</h3>
+                <h3 className="result-research-title">다른 장소도 확인해볼까요?</h3>
                 <form
                   className="lh-hero-search"
                   onSubmit={(e) => {
@@ -584,6 +666,13 @@ export default function AnalysisPage() {
             </>
           }
         />
+      )}
+
+      {/* 공유 toast */}
+      {copyToast && (
+        <div className="copy-toast" role="status">
+          {copyToast}
+        </div>
       )}
 
       {/* 오프스크린 공유 이미지 카드 — 캡처용 (visually hidden) */}
