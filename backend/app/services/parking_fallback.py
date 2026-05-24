@@ -111,8 +111,44 @@ def _kakao_doc_to_external(
     )
 
 
+# 부동산/매물/광고 등 명백히 주차장이 아닌 웹검색 결과 제외용 키워드.
+# title/snippet 에 한 번이라도 등장하면 후보에서 떨어뜨림.
+_WEB_NEGATIVE_KEYWORDS: tuple[str, ...] = (
+    "경매", "타경", "급매", "매물", "매매", "전세", "월세", "분양",
+    "아파트", "오피스텔", "빌라", "원룸", "투룸", "재개발", "재건축",
+    "부동산", "공인중개사", "중개사", "시세", "호가", "평수", "전용면적",
+    "맛집", "메뉴", "리뷰",  # 식당 블로그 — 자체주차 evidence 는 self_parking_web 에서 따로 처리
+    "상가거리", "쇼핑몰",
+    "채용", "공고", "구인",
+)
+# 진짜 주차장 정보일 가능성을 끌어올리는 긍정 키워드. title/snippet 중 어디에도
+# 한 번도 등장하지 않으면 confidence 낮다고 보고 제외.
+_WEB_POSITIVE_KEYWORDS: tuple[str, ...] = (
+    "주차장", "공영주차장", "노상주차", "주차 가능", "주차 요금",
+    "주차료", "유료주차", "무료주차",
+)
+
+
+def _is_web_result_relevant(item: dict) -> bool:
+    """웹 검색 결과가 실제 '주차' 정보일 가능성이 있는지 휴리스틱 필터."""
+    title = (item.get("title") or "").strip()
+    snippet = (item.get("snippet") or "").strip()
+    blob = f"{title} {snippet}"
+    if not blob.strip():
+        return False
+    for neg in _WEB_NEGATIVE_KEYWORDS:
+        if neg in blob:
+            return False
+    for pos in _WEB_POSITIVE_KEYWORDS:
+        if pos in blob:
+            return True
+    return False
+
+
 def _web_result_to_external(item: dict) -> ExternalCandidate:
     title = item.get("title") or "웹 검색 결과"
+    # 웹 검색 결과는 좌표/운영 여부 검증이 안 되므로 항상 caution.
+    # (기본값 usable 로 두면 부동산 매물/블로그까지 "추천 가능" 으로 표시되는 버그)
     return ExternalCandidate(
         source="web_search",
         source_label="웹 검색 기반",
@@ -120,6 +156,10 @@ def _web_result_to_external(item: dict) -> ExternalCandidate:
         title=title,
         url=item.get("url"),
         snippet=item.get("snippet"),
+        usability="caution",
+        usability_label=_USABILITY_LABEL["caution"],
+        usability_reasons=["웹 검색 결과 — 실제 주차장 여부 미검증"],
+        warning="웹 검색 기반 정보입니다. 실제 주차 가능 여부는 방문 전 확인이 필요합니다.",
     )
 
 

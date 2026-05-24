@@ -978,8 +978,9 @@ button {
   height: 78vh;
 }
 .sheet-expanded {
-  /* expanded 상태에서도 토프바(즐겨찾기★/뒤로/공유)는 항상 보이게 — 시트가 토프바 아래까지만 차오름. */
-  height: calc(100vh - 56px - env(safe-area-inset-top, 0));
+  /* expanded 상태에서도 토프바(즐겨찾기★/뒤로/공유) + 반경칩 모두 항상 보이게.
+     토프바 ~56px + 반경칩 줄 ~44px + 여백 ~8px = 약 108px 만큼은 비워둔다. */
+  height: calc(100vh - 108px - env(safe-area-inset-top, 0));
 }
 
 /* 핸들 — tap area 키움 + 텍스트 힌트로 affordance 명확 */

@@ -67,9 +67,10 @@ export default function AnalysisPage() {
   >(null);
   const [fav, setFav] = useState(false);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
-  // 모바일에서는 결과 카드들이 한눈에 보이도록 기본을 expanded 로 둔다.
-  // 사용자가 지도 보고 싶으면 핸들 / 헤더 탭으로 줄임.
-  const [sheetState, setSheetState] = useState<SheetState>("expanded");
+  // 기본은 half — expanded 로 시작하면 시트(z-40)가 토프바/반경칩(z-30/20)을
+  // 덮어 즐겨찾기★/뒤로/공유 버튼에 접근 불가가 됨. half 에서도 결과 카드들이
+  // 충분히 보이고, 더 보고 싶으면 핸들 한 번 탭이면 expanded 로 전환됨.
+  const [sheetState, setSheetState] = useState<SheetState>("half");
 
   useEffect(() => {
     if (!data) return;
