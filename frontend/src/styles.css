@@ -1,53 +1,64 @@
 :root {
-  /* Backgrounds */
-  --color-bg-page: #f8fafc;
-  --color-bg-card: #ffffff;
-  --color-bg-soft: #f1f5f9;
-  --color-bg-elevated: rgba(255, 255, 255, 0.92);
+  /* --- Toss-inspired design tokens ---
+     Color: 시그니처 토스 블루 #3182f6 / 회색 시스템 #f9fafb~#191f28 / 보더 거의
+     안 보이는 #f2f4f6. Shadow: 약하고 부드러움. Radius: 14~24 큼지막. Typo:
+     Pretendard variable, 본문 16px / 무게 medium~bold.
+  */
 
-  /* Text */
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-muted: #94a3b8;
+  /* Backgrounds */
+  --color-bg-page: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-soft: #f2f4f6;
+  --color-bg-elevated: rgba(255, 255, 255, 0.96);
+
+  /* Text — Toss gray system */
+  --color-text-primary: #191f28;
+  --color-text: #191f28;
+  --color-text-secondary: #4e5968;
+  --color-text-muted: #8b95a1;
   --color-text-inverse: #ffffff;
 
-  /* Brand */
-  --color-primary: #2563eb;
-  --color-primary-strong: #1d4ed8;
-  --color-primary-soft: #dbeafe;
+  /* Brand — Toss blue */
+  --color-primary: #3182f6;
+  --color-primary-strong: #1b64da;
+  --color-primary-soft: #e8f3ff;
 
-  /* Verdict semantic colors */
-  --color-verdict-available: #16a34a;
-  --color-verdict-available-bg: #dcfce7;
-  --color-verdict-likely: #2563eb;
-  --color-verdict-likely-bg: #dbeafe;
-  --color-verdict-uncertain: #f59e0b;
-  --color-verdict-uncertain-bg: #fef3c7;
-  --color-verdict-unavailable: #dc2626;
-  --color-verdict-unavailable-bg: #fee2e2;
-  --color-verdict-unknown: #64748b;
-  --color-verdict-unknown-bg: #e2e8f0;
+  /* Verdict semantic colors (slightly desaturated → 토스 톤) */
+  --color-verdict-available: #00c471;
+  --color-verdict-available-bg: #e7f9f0;
+  --color-verdict-likely: #3182f6;
+  --color-verdict-likely-bg: #e8f3ff;
+  --color-verdict-uncertain: #f59f00;
+  --color-verdict-uncertain-bg: #fff4e0;
+  --color-verdict-unavailable: #f04452;
+  --color-verdict-unavailable-bg: #ffeaec;
+  --color-verdict-unknown: #8b95a1;
+  --color-verdict-unknown-bg: #f2f4f6;
 
-  /* Outline / shadow */
-  --color-border: #e2e8f0;
-  --shadow-card: 0 8px 24px rgba(15, 23, 42, 0.08);
-  --shadow-strong: 0 16px 40px rgba(15, 23, 42, 0.14);
+  /* Outline / shadow — Toss는 보더 거의 안 보임, shadow도 부드럽고 얕음 */
+  --color-border: #f2f4f6;
+  --color-border-strong: #e5e8eb;
+  --shadow-card: 0 1px 0 rgba(0, 0, 0, 0.02), 0 4px 16px rgba(31, 41, 55, 0.06);
+  --shadow-strong: 0 8px 28px rgba(31, 41, 55, 0.12);
 
-  /* Radius */
-  --radius-sm: 10px;
+  /* Radius — 토스는 16~24px 큰 라운드 선호 */
+  --radius-sm: 12px;
   --radius-md: 16px;
-  --radius-lg: 22px;
+  --radius-lg: 20px;
   --radius-xl: 28px;
   --radius-full: 999px;
 
-  /* Typography */
-  --font-size-title: 20px;
-  --font-size-section: 17px;
-  --font-size-body: 14px;
-  --font-size-meta: 12px;
-  --font-size-caption: 11px;
-  --line-height-title: 1.25;
-  --line-height-body: 1.5;
+  /* Typography — Pretendard 기반, 본문 16, 큰 타이틀 22~28 */
+  --font-family-base: "Pretendard Variable", Pretendard, -apple-system,
+    BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", system-ui,
+    sans-serif;
+  --font-size-title: 22px;
+  --font-size-section: 18px;
+  --font-size-body: 16px;
+  --font-size-meta: 13px;
+  --font-size-caption: 12px;
+  --line-height-title: 1.3;
+  --line-height-body: 1.55;
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
@@ -60,6 +71,7 @@
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
+  --space-7: 32px;
 
   /* Legacy alias (점진적 교체용) */
   --bg: var(--color-bg-card);
@@ -69,9 +81,9 @@
   --brand: var(--color-primary);
   --easy: var(--color-verdict-available);
   --moderate: var(--color-verdict-uncertain);
-  --busy: #ea580c;
+  --busy: #ff7c4d;
   --risky: var(--color-verdict-unavailable);
-  --full: #991b1b;
+  --full: #c53b48;
   --unknown: var(--color-verdict-unknown);
   --card: var(--color-bg-soft);
 }
@@ -88,16 +100,85 @@ body,
 }
 
 body {
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard",
-    "Noto Sans KR", system-ui, sans-serif;
+  font-family: var(--font-family-base);
   color: var(--color-text-primary);
   background: var(--color-bg-page);
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
   font-weight: var(--font-weight-medium);
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Toss-style typography 강화 — h1/h2 큼지막, 무게 700 */
+.h1,
+h1 {
+  font-size: 26px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin: 0 0 var(--space-2);
+}
+.h2,
+h2 {
+  font-size: 18px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+}
+.tagline {
+  color: var(--color-text-secondary);
+  font-size: 15px;
+  font-weight: var(--font-weight-medium);
+  line-height: 1.5;
+}
+
+/* Toss-style buttons — fully rounded 14px, weight 700, 큰 패딩, hover translateY */
+button.btn,
+.btn {
+  font-family: inherit;
+  font-weight: var(--font-weight-bold);
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  padding: 14px 20px;
+  border-radius: 14px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: transform 120ms ease-out, background 120ms ease-out,
+    box-shadow 120ms ease-out, opacity 120ms ease-out;
+}
+button.btn:hover,
+.btn:hover {
+  transform: translateY(-1px);
+  background: var(--color-bg-soft);
+}
+button.btn:active,
+.btn:active {
+  transform: translateY(0);
+  opacity: 0.85;
+}
+button.btn.primary,
+.btn.primary {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 6px rgba(49, 130, 246, 0.24);
+}
+button.btn.primary:hover,
+.btn.primary:hover {
+  background: var(--color-primary-strong);
+  border-color: var(--color-primary-strong);
+  box-shadow: 0 4px 12px rgba(49, 130, 246, 0.32);
+}
+button.btn:disabled,
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
 }
 
 a {
