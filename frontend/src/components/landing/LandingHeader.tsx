@@ -27,7 +27,7 @@ export default function LandingHeader({ onSearchClick }: Props) {
           <span className="lh-logo-emoji">🅿️</span>
           <span className="lh-logo-text">
             주차될까
-            <span className="lh-logo-by">by ReviewDr</span>
+            <span className="lh-logo-by">by team HIAILab</span>
           </span>
         </button>
 
