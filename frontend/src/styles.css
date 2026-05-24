@@ -1656,25 +1656,57 @@ button {
 /* ============================================================ */
 /* Home mode entries (/judge, /basecamp)                        */
 /* ============================================================ */
-/* Scrollytelling 헤드라인 — 두 카피가 같은 자리에 겹쳐 cross-fade.
-   stack 높이 = 한 카피의 line-box 만큼만 차지 (52px 정도). */
-.hero-headline-stack {
-  position: relative;
-  height: 56px;
-  margin: var(--space-2) 0 var(--space-3);
+/* Hero 워드사이클링 — 배민/토스 메인 톤. 큰 hero 영역 + 단어만 위로 슬라이드. */
+.hero-wrap {
+  padding: 28px 4px 24px;
+  margin: 0 0 var(--space-3);
 }
-.hero-copy {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  margin: 0;
-  /* will-change 로 transform/opacity GPU 가속 — 스크롤 중 흔들림 방지 */
-  will-change: transform, opacity;
-}
-.hero-copy-brand {
-  color: var(--color-primary-strong);
+.hero-headline {
+  font-size: 30px;
+  line-height: 1.2;
+  font-weight: var(--font-weight-bold);
   letter-spacing: -0.025em;
+  color: var(--color-text-primary);
+}
+.hero-cycle-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  gap: 0;
+}
+.hero-cycle-slot {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  height: 1.2em;
+  line-height: 1.2;
+  vertical-align: bottom;
+  /* 단어가 위/아래로 슬라이드 인/아웃되는 동안 잘림 영역 — 라운드 처리로 시각적 안정감 */
+}
+.hero-cycle-word {
+  display: inline-block;
+  color: var(--color-primary);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+  /* 본문 텍스트와 separation — 토스블루 강조색 */
+}
+.hero-cycle-tail {
+  display: inline-block;
+  white-space: pre;
+}
+.hero-static-line {
+  margin-top: 2px;
+}
+.hero-sub {
+  margin: 14px 0 0;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.4;
+}
+@media (max-width: 380px) {
+  .hero-headline { font-size: 26px; }
 }
 
 /* Home — 그룹 즐겨찾기 토스 톤 배너 */

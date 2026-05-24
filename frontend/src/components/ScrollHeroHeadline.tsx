@@ -1,35 +1,66 @@
-import { motion, useScroll, useTransform } from "framer-motion";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
-/** 배민/토스 스타일 스크롤리텔링 헤드라인.
+/** 배민 메인 히어로 톤의 워드 사이클링.
  *
- *  - 0~80px 스크롤: 카피 1 (페르소나/감성) 그대로 보임
- *  - 80~160px: 카피 1 fade-out + 카피 2 (브랜드) fade-in, 살짝 위로 슬라이드
- *  - 두 카피는 같은 자리에 absolute 로 겹쳐 cross-fade.
+ *  배민: "[육퇴의 행복] 식지 않도록" → "[배달의민족 세상의 모든 것이] 식지 않도록"
+ *  우리: "[○○○] 갈 때, 주차될까?"
+ *    — [○○○] 부분만 2.4초마다 위로 슬라이드 + cross-fade 로 회전.
+ *  나머지 "갈 때, 주차될까?" 는 고정.
  *
- *  스크롤이 짧은 사용자도 어색하지 않도록 transform 폭은 작게 (16px).
+ *  스크롤 의존 X — 첫 진입에도 자동으로 메시지 회전됨 (사용자가 비어있어 스크롤
+ *  안 되는 경우도 대응). 추후 스크롤 trigger 도 얹을 수 있음.
  */
+
+const CYCLE_WORDS = [
+  "회사 근처",
+  "약속 장소",
+  "강남 핫플",
+  "여행지",
+  "주말 마트",
+  "데이트 코스",
+  "병원",
+  "이사 갈 동네",
+];
+
+const INTERVAL_MS = 2400;
+
 export default function ScrollHeroHeadline() {
-  const { scrollY } = useScroll();
-  const copy1Opacity = useTransform(scrollY, [0, 80, 160], [1, 1, 0]);
-  const copy1Y = useTransform(scrollY, [0, 160], [0, -10]);
-  const copy2Opacity = useTransform(scrollY, [80, 160, 220], [0, 1, 1]);
-  const copy2Y = useTransform(scrollY, [80, 220], [10, 0]);
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => {
+      setIdx((i) => (i + 1) % CYCLE_WORDS.length);
+    }, INTERVAL_MS);
+    return () => clearInterval(t);
+  }, []);
 
   return (
-    <div className="hero-headline-stack" aria-label="주차될까 — 메인 카피">
-      <motion.h1
-        className="h1 hero-copy"
-        style={{ opacity: copy1Opacity, y: copy1Y }}
-      >
-        오늘 거기, 주차 자리 있을까?
-      </motion.h1>
-      <motion.h1
-        className="h1 hero-copy hero-copy-brand"
-        style={{ opacity: copy2Opacity, y: copy2Y }}
-        aria-hidden
-      >
-        주차될까 — 가기 전 1초 미리 확인
-      </motion.h1>
-    </div>
+    <section className="hero-wrap" aria-label="주차될까">
+      <div className="hero-headline">
+        <div className="hero-cycle-line">
+          <span className="hero-cycle-slot">
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.span
+                key={CYCLE_WORDS[idx]}
+                className="hero-cycle-word"
+                initial={{ y: "100%", opacity: 0 }}
+                animate={{ y: "0%", opacity: 1 }}
+                exit={{ y: "-100%", opacity: 0 }}
+                transition={{
+                  type: "tween",
+                  duration: 0.45,
+                  ease: [0.32, 0.72, 0, 1],
+                }}
+              >
+                {CYCLE_WORDS[idx]}
+              </motion.span>
+            </AnimatePresence>
+          </span>
+          <span className="hero-cycle-tail"> 갈 때,</span>
+        </div>
+        <div className="hero-static-line">주차될까?</div>
+      </div>
+      <p className="hero-sub">가기 전 1초, 미리 확인하세요.</p>
+    </section>
   );
 }

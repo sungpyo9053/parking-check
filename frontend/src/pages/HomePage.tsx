@@ -159,9 +159,6 @@ export default function HomePage() {
   return (
     <div>
       <ScrollHeroHeadline />
-      <p className="tagline">
-        자체 주차 가능성, 주변 주차장, 도보 시간을 한 번에.
-      </p>
 
       <form className="search-box" onSubmit={submit}>
         <input
