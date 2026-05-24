@@ -26,6 +26,11 @@ export default function App() {
       </main>
       <footer className="disclaimer">
         ※ 실시간 정보는 현장과 차이가 있을 수 있습니다.
+        {isHome && (
+          <div className="disclaimer-brand">
+            🅿️ 주차될까 · <span className="disclaimer-by">A ReviewDr Lab Project</span>
+          </div>
+        )}
       </footer>
     </div>
   );

@@ -248,6 +248,18 @@ button {
   color: var(--muted);
   padding: 12px;
 }
+.disclaimer-brand {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  letter-spacing: -0.01em;
+}
+.disclaimer-by {
+  font-weight: 500;
+  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+}
 
 /* form */
 .search-box {
@@ -1899,10 +1911,10 @@ button {
 /* ============= Landing — Hero ============= */
 .lh-hero {
   position: relative;
-  padding: 56px 20px 64px;
+  /* 모바일 첫 화면에서 검색창이 바로 보이도록 padding 압축. 데스크탑은 미디어 쿼리로 키움. */
+  padding: 24px 20px 36px;
   background:
-    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(49, 130, 246, 0.10), transparent 70%),
-    radial-gradient(ellipse 70% 50% at 80% 90%, rgba(0, 196, 113, 0.08), transparent 70%),
+    radial-gradient(ellipse 90% 60% at 20% 5%, rgba(49, 130, 246, 0.08), transparent 70%),
     linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
   overflow: hidden;
 }
@@ -1914,29 +1926,30 @@ button {
 }
 .lh-hero-eyebrow {
   display: inline-block;
-  padding: 6px 12px;
+  padding: 5px 11px;
   background: var(--color-primary);
   color: #fff;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: -0.01em;
-  margin-bottom: 18px;
-  box-shadow: 0 4px 12px rgba(49, 130, 246, 0.30);
+  margin-bottom: 12px;
+  box-shadow: 0 3px 10px rgba(49, 130, 246, 0.28);
 }
+/* 모바일은 32px 부터 — 큰 카피 + sub + 검색창이 첫 화면(예 iPhone SE 667px) 안에 들어오게 */
 .lh-hero-title {
-  font-size: 44px;
-  line-height: 1.15;
+  font-size: 32px;
+  line-height: 1.18;
   font-weight: 800;
   letter-spacing: -0.035em;
   color: var(--color-text-primary);
-  margin: 0 0 16px;
+  margin: 0 0 10px;
 }
 .lh-hero-sub {
-  font-size: 16px;
+  font-size: 14px;
   color: var(--color-text-secondary);
-  line-height: 1.55;
-  margin: 0 0 28px;
+  line-height: 1.5;
+  margin: 0 0 18px;
   font-weight: 500;
 }
 .lh-hero-sub strong {
@@ -2046,6 +2059,64 @@ button {
   color: var(--color-text-muted);
   font-weight: 600;
 }
+/* mockup 미니맵 — 실제 지도 아닌 시각적 placeholder (지도 서비스 톤) */
+.lh-mock-map {
+  position: relative;
+  height: 100px;
+  background: linear-gradient(135deg, #eef4ff 0%, #f5f9ff 100%);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  color: var(--color-primary);
+}
+.lh-mock-map-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(49, 130, 246, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(49, 130, 246, 0.08) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.lh-mock-route {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--color-primary);
+  opacity: 0.7;
+}
+.lh-mock-pin {
+  position: absolute;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(31, 41, 55, 0.18);
+  white-space: nowrap;
+}
+.lh-mock-pin-dest {
+  top: 30%;
+  left: 24%;
+  background: transparent;
+  box-shadow: none;
+  font-size: 22px;
+  padding: 0;
+}
+.lh-mock-pin-p1 {
+  top: 56%;
+  left: 56%;
+  color: #fff;
+  background: var(--color-primary);
+}
+.lh-mock-pin-p2 {
+  top: 18%;
+  left: 70%;
+  color: var(--color-primary);
+  border: 1.5px solid var(--color-primary);
+}
+
 .lh-mock-place {
   font-size: 18px;
   font-weight: 800;
@@ -2102,7 +2173,7 @@ button {
 
 @media (min-width: 880px) {
   .lh-hero {
-    padding: 80px 20px 96px;
+    padding: 72px 20px 80px;
   }
   .lh-hero-inner {
     display: grid;
@@ -2110,13 +2181,15 @@ button {
     gap: 48px;
     align-items: center;
   }
-  .lh-hero-title { font-size: 56px; }
+  .lh-hero-title { font-size: 52px; line-height: 1.12; margin-bottom: 18px; }
+  .lh-hero-sub { font-size: 17px; margin-bottom: 28px; }
+  .lh-hero-eyebrow { font-size: 12px; padding: 6px 12px; margin-bottom: 18px; }
   .lh-hero-mockup { margin-top: 0; }
   .lh-mock-card { max-width: 420px; margin-left: auto; }
   .lh-br-desktop { display: inline; }
 }
-@media (max-width: 420px) {
-  .lh-hero-title { font-size: 36px; }
+@media (max-width: 360px) {
+  .lh-hero-title { font-size: 28px; }
 }
 
 /* ============= Problem ============= */

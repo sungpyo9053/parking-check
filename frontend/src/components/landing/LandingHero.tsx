@@ -54,7 +54,7 @@ export default function LandingHero({ query, onQueryChange, onSubmit }: Props) {
             </span>
             <input
               inputMode="search"
-              placeholder="장소명을 입력하세요 (예: 성수동 카페, 강남역 맛집)"
+              placeholder="성수동 카페, 강남 맛집, 부산 관광지"
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
               autoFocus
@@ -89,6 +89,18 @@ export default function LandingHero({ query, onQueryChange, onSubmit }: Props) {
             </span>
             <span className="lh-mock-time">미리보기</span>
           </div>
+
+          {/* 미니맵 placeholder — 지도 서비스 느낌 강화. 실제 지도 아닌 이미지 모사. */}
+          <div className="lh-mock-map" aria-hidden>
+            <div className="lh-mock-map-grid" />
+            <div className="lh-mock-pin lh-mock-pin-dest" title="목적지">📍</div>
+            <div className="lh-mock-pin lh-mock-pin-p1" title="1순위 주차">P1</div>
+            <div className="lh-mock-pin lh-mock-pin-p2" title="2순위 주차">P2</div>
+            <svg className="lh-mock-route" viewBox="0 0 100 60" preserveAspectRatio="none">
+              <path d="M 28 22 Q 45 12 62 38" stroke="currentColor" strokeWidth="1.6" fill="none" strokeDasharray="3 2" />
+            </svg>
+          </div>
+
           <div className="lh-mock-place">성수동 ○○ 카페</div>
 
           <div className="lh-mock-verdict">
