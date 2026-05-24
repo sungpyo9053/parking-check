@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { api, FavoriteItemOut } from "../lib/api";
 import { useRecentSearches } from "../hooks/useRecentSearches";
 import DiscoverHot from "../components/DiscoverHot";
+import ScrollHeroHeadline from "../components/ScrollHeroHeadline";
 import { Favorite, listFavorites, removeFavorite } from "../lib/favorites";
 import {
   StoredGroup,
@@ -157,10 +158,9 @@ export default function HomePage() {
 
   return (
     <div>
-      <h1 className="h1">주차될까</h1>
+      <ScrollHeroHeadline />
       <p className="tagline">
-        가기 전에 주차부터 확인하세요. 자체 주차 가능성, 주변 주차장, 도보
-        시간을 한 번에 보여드립니다.
+        자체 주차 가능성, 주변 주차장, 도보 시간을 한 번에.
       </p>
 
       <form className="search-box" onSubmit={submit}>

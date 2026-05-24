@@ -1656,6 +1656,27 @@ button {
 /* ============================================================ */
 /* Home mode entries (/judge, /basecamp)                        */
 /* ============================================================ */
+/* Scrollytelling 헤드라인 — 두 카피가 같은 자리에 겹쳐 cross-fade.
+   stack 높이 = 한 카피의 line-box 만큼만 차지 (52px 정도). */
+.hero-headline-stack {
+  position: relative;
+  height: 56px;
+  margin: var(--space-2) 0 var(--space-3);
+}
+.hero-copy {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin: 0;
+  /* will-change 로 transform/opacity GPU 가속 — 스크롤 중 흔들림 방지 */
+  will-change: transform, opacity;
+}
+.hero-copy-brand {
+  color: var(--color-primary-strong);
+  letter-spacing: -0.025em;
+}
+
 /* Home — 그룹 즐겨찾기 토스 톤 배너 */
 .home-group-banner {
   background: var(--color-primary-soft);
