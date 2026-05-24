@@ -175,11 +175,21 @@ def pick_top_external(
     """후보 리스트에서 최우선 1개. private_restricted 는 자동 제외.
 
     동점이면 거리 짧은 쪽 우선.
+
+    중요: [usable] 후보가 1개라도 있으면 [caution] 은 1순위 후보 풀에서 제외.
+    더 멀어도 검증된 일반 개방 후보를 1순위로 — 회사 빌딩/임의 빌딩 주차장
+    (caution) 이 단순 거리 우위로 1순위가 되어 "회사 건물에 주차하라" 처럼 보이는
+    버그 차단. usable 이 0 개일 때만 caution 도 후보로 허용 (사용자에게 "확인 필요"
+    라벨로 표시됨).
     """
+    pool_usable = [c for c in candidates if c.usability == "usable"]
+    if pool_usable:
+        pool = pool_usable
+    else:
+        pool = [c for c in candidates if c.usability != "private_restricted"]
+
     best: tuple[float, int, ExternalCandidate, list[str]] | None = None
-    for c in candidates:
-        if c.usability == "private_restricted":
-            continue
+    for c in pool:
         s, rs = score_external(c)
         tie = c.distance_m if c.distance_m is not None else 99999
         key = (-s, tie)  # 점수 내림차순, 거리 오름차순
