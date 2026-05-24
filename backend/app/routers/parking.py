@@ -28,6 +28,11 @@ from ..schemas.parking import (
     TopRecommendation,
 )
 from ..services.external_recommender import pick_top_external
+from ..services.kakao_place_detail import (
+    KakaoPlaceDetail,
+    extract_place_id as extract_kakao_place_id,
+    fetch_detail_sync as fetch_kakao_detail,
+)
 from ..services.llm_summary import summarize_analysis
 from ..services.menu_extractor import extract_menus, is_food_place
 from ..services.parking_fallback import collect_external_candidates
@@ -456,3 +461,28 @@ def analyze(
         pass
 
     return response
+
+
+@router.get("/kakao-detail", response_model=KakaoPlaceDetail | None)
+def kakao_detail(
+    kakao_place_id: Optional[str] = Query(
+        None, description="카카오 place_id (숫자 문자열). 예: 1263774782"
+    ),
+    url: Optional[str] = Query(
+        None,
+        description="place.map.kakao.com URL 그대로 전달해도 됨 — 자동 파싱.",
+    ),
+) -> KakaoPlaceDetail | None:
+    """1순위 추천 후보의 카카오맵 상세 (요금/운영시간/면수/결제방식) 추출.
+
+    프론트에서 분석 결과 받고 1순위 후보의 c.url 로 lazy 호출.
+    캐시 hit 시 즉시 반환, miss 시 Playwright 호출 (~3~5초).
+    """
+    pid = kakao_place_id or extract_kakao_place_id(url)
+    if not pid:
+        raise HTTPException(
+            status_code=400,
+            detail="kakao_place_id 또는 url(place.map.kakao.com/...) 필요",
+        )
+    detail = fetch_kakao_detail(pid)
+    return detail  # None 허용 — 카카오에 데이터 없는 후보 (민영 작은 주차장 등)

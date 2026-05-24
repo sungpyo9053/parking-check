@@ -222,10 +222,28 @@ export type Visit = {
   updated_at: string | null;
 };
 
+export type KakaoPlaceDetail = {
+  place_id: string;
+  open_status: string | null;
+  hours: string | null;
+  capacity: string | null;
+  base_fee_text: string | null;
+  extra_fee_text: string | null;
+  daily_max_text: string | null;
+  payment_methods: string | null;
+  phone: string | null;
+  fetched_at_iso: string | null;
+};
+
 export const api = {
   searchPlaces: (query: string, size = 10) =>
     request<{ items: PlaceItem[] }>(
       `/api/places/search?query=${encodeURIComponent(query)}&size=${size}`,
+    ),
+
+  kakaoDetail: (kakaoPlaceId: string) =>
+    request<KakaoPlaceDetail | null>(
+      `/api/parking/kakao-detail?kakao_place_id=${encodeURIComponent(kakaoPlaceId)}`,
     ),
 
   analyze: (params: {

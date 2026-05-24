@@ -1,9 +1,17 @@
+import { useEffect, useState } from "react";
 import type { AnalyzeResponse } from "../../types/parking";
 import { openKakaoFootRoute } from "../../lib/maps";
+import { api, KakaoPlaceDetail } from "../../lib/api";
 import {
   distanceSourceLabel,
   kindLabel,
 } from "../../utils/parkingPresentation";
+
+function extractKakaoPlaceId(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const m = url.match(/place\.map\.kakao\.com\/(\d+)/);
+  return m ? m[1] : null;
+}
 
 type Props = {
   data: AnalyzeResponse;
@@ -69,15 +77,31 @@ export default function PlanACard({ data, destName }: Props) {
   const c = tr.candidate;
   const canRoute = c.lat != null && c.lng != null;
   const distM = c.walking_route_distance_m ?? c.distance_m;
-  const reason =
-    `${kindLabel(c.category)} · 운영/요금은 카카오맵에서 확인하세요`;
-  // 카카오 place 페이지 iframe embed — 요금/면수/혼잡도/운영시간을 우리가 직접
-  // 크롤링하지 않고 카카오 페이지 그대로 카드에 띄움. http → https 강제 치환
-  // (mixed content 차단 회피). 카카오 외 도메인은 embed 안 함.
-  const kakaoEmbedUrl =
-    c.url && /^https?:\/\/place\.map\.kakao\.com\//.test(c.url)
-      ? c.url.replace(/^http:/, "https:")
-      : null;
+  const reason = `${kindLabel(c.category)}`;
+  const kakaoPid = extractKakaoPlaceId(c.url);
+
+  // 1순위 후보의 카카오 상세 (요금/시간/면수/결제) — 우리 디자인으로 표시.
+  // 분석 응답엔 안 들어가있고 lazy fetch (Playwright 백엔드 호출 3~5초, 캐시 hit 시 즉시).
+  const [detail, setDetail] = useState<KakaoPlaceDetail | null | undefined>(undefined);
+  useEffect(() => {
+    if (!kakaoPid) {
+      setDetail(null);
+      return;
+    }
+    let cancelled = false;
+    setDetail(undefined); // loading
+    api
+      .kakaoDetail(kakaoPid)
+      .then((d) => {
+        if (!cancelled) setDetail(d);
+      })
+      .catch(() => {
+        if (!cancelled) setDetail(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [kakaoPid]);
 
   return (
     <div className="top-rec-card">
@@ -107,6 +131,68 @@ export default function PlanACard({ data, destName }: Props) {
           </span>
         )}
       </div>
+      {/* 카카오맵 detail — 요금/시간/면수/결제. 우리 디자인. */}
+      {kakaoPid && (
+        <div className="top-rec-detail">
+          {detail === undefined && (
+            <div className="top-rec-detail-loading">카카오맵에서 요금/시간 정보 불러오는 중…</div>
+          )}
+          {detail === null && (
+            <div className="top-rec-detail-empty">
+              요금/시간 정보가 등록되지 않은 주차장입니다.
+            </div>
+          )}
+          {detail && (
+            <ul className="top-rec-detail-list">
+              {detail.open_status && (
+                <li>
+                  <span className="top-rec-detail-key">상태</span>
+                  <span className="top-rec-detail-val">{detail.open_status}</span>
+                </li>
+              )}
+              {detail.hours && (
+                <li>
+                  <span className="top-rec-detail-key">운영시간</span>
+                  <span className="top-rec-detail-val">{detail.hours}</span>
+                </li>
+              )}
+              {detail.base_fee_text && (
+                <li>
+                  <span className="top-rec-detail-key">기본요금</span>
+                  <span className="top-rec-detail-val">{detail.base_fee_text}</span>
+                </li>
+              )}
+              {detail.extra_fee_text && (
+                <li>
+                  <span className="top-rec-detail-key">추가요금</span>
+                  <span className="top-rec-detail-val">{detail.extra_fee_text}</span>
+                </li>
+              )}
+              {detail.daily_max_text && (
+                <li>
+                  <span className="top-rec-detail-key">일 최대</span>
+                  <span className="top-rec-detail-val top-rec-detail-emph">
+                    {detail.daily_max_text}
+                  </span>
+                </li>
+              )}
+              {detail.capacity && (
+                <li>
+                  <span className="top-rec-detail-key">총면수</span>
+                  <span className="top-rec-detail-val">{detail.capacity}</span>
+                </li>
+              )}
+              {detail.payment_methods && (
+                <li>
+                  <span className="top-rec-detail-key">결제</span>
+                  <span className="top-rec-detail-val">{detail.payment_methods}</span>
+                </li>
+              )}
+            </ul>
+          )}
+        </div>
+      )}
+
       <div className="top-rec-actions">
         {canRoute && (
           <button
@@ -126,28 +212,10 @@ export default function PlanACard({ data, destName }: Props) {
             className="btn top-rec-cta-secondary"
             onClick={() => window.open(c.url!, "_blank", "noopener,noreferrer")}
           >
-            카카오맵 새 창
+            카카오맵 열기
           </button>
         )}
       </div>
-      {kakaoEmbedUrl && (
-        <div className="top-rec-kakao-embed">
-          <div className="top-rec-kakao-embed-label">
-            요금 · 운영시간 · 혼잡도 (카카오맵 상세)
-          </div>
-          {/* sandbox: allow-scripts + allow-same-origin 만 — allow-top-navigation 빼서
-              카카오 페이지가 top.location 으로 frame busting 시도해도 우리 앱을
-              교체하지 못함. allow-popups 는 외부 링크 클릭 시 새 탭. */}
-          <iframe
-            className="top-rec-kakao-iframe"
-            src={kakaoEmbedUrl}
-            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            title={`${c.name} 카카오맵 상세`}
-          />
-        </div>
-      )}
     </div>
   );
 }
