@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { api, FavoriteItemOut } from "../lib/api";
 import { useRecentSearches } from "../hooks/useRecentSearches";
 import DiscoverHot from "../components/DiscoverHot";
-import ScrollHeroHeadline from "../components/ScrollHeroHeadline";
+import LandingHero from "../components/LandingHero";
 import { Favorite, listFavorites, removeFavorite } from "../lib/favorites";
 import {
   StoredGroup,
@@ -157,21 +157,11 @@ export default function HomePage() {
   }
 
   return (
-    <div>
-      <ScrollHeroHeadline />
+    <div className="home-page">
+      <LandingHero query={q} onQueryChange={setQ} onSubmit={submit} />
 
-      <form className="search-box" onSubmit={submit}>
-        <input
-          inputMode="search"
-          placeholder="예: 수유전통시장, 더홈 안양, 디올 성수"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          autoFocus
-        />
-        <button type="submit">검색</button>
-      </form>
-
-      <DiscoverHot />
+      <div className="home-after-hero">
+        <DiscoverHot />
 
       <div className="home-mode-cards">
         <Link to="/judge" className="home-mode-card home-mode-card-judge">
@@ -363,6 +353,7 @@ export default function HomePage() {
           </li>
         </ul>
       )}
+      </div>
     </div>
   );
 }
