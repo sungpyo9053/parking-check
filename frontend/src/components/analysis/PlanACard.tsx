@@ -71,6 +71,13 @@ export default function PlanACard({ data, destName }: Props) {
   const distM = c.walking_route_distance_m ?? c.distance_m;
   const reason =
     `${kindLabel(c.category)} · 운영/요금은 카카오맵에서 확인하세요`;
+  // 카카오 place 페이지 iframe embed — 요금/면수/혼잡도/운영시간을 우리가 직접
+  // 크롤링하지 않고 카카오 페이지 그대로 카드에 띄움. http → https 강제 치환
+  // (mixed content 차단 회피). 카카오 외 도메인은 embed 안 함.
+  const kakaoEmbedUrl =
+    c.url && /^https?:\/\/place\.map\.kakao\.com\//.test(c.url)
+      ? c.url.replace(/^http:/, "https:")
+      : null;
 
   return (
     <div className="top-rec-card">
@@ -119,10 +126,28 @@ export default function PlanACard({ data, destName }: Props) {
             className="btn top-rec-cta-secondary"
             onClick={() => window.open(c.url!, "_blank", "noopener,noreferrer")}
           >
-            카카오맵 상세
+            카카오맵 새 창
           </button>
         )}
       </div>
+      {kakaoEmbedUrl && (
+        <div className="top-rec-kakao-embed">
+          <div className="top-rec-kakao-embed-label">
+            요금 · 운영시간 · 혼잡도 (카카오맵 상세)
+          </div>
+          {/* sandbox: allow-scripts + allow-same-origin 만 — allow-top-navigation 빼서
+              카카오 페이지가 top.location 으로 frame busting 시도해도 우리 앱을
+              교체하지 못함. allow-popups 는 외부 링크 클릭 시 새 탭. */}
+          <iframe
+            className="top-rec-kakao-iframe"
+            src={kakaoEmbedUrl}
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            title={`${c.name} 카카오맵 상세`}
+          />
+        </div>
+      )}
     </div>
   );
 }
