@@ -229,6 +229,18 @@ button {
   flex: 1;
   padding: 16px;
 }
+/* 페이지 슬라이드 — 좌우로 넘어가는 transform 이 옆 영역으로 안 보이게 클리핑 */
+.page-transition-host {
+  position: relative;
+  overflow-x: hidden;
+}
+/* AnalysisPage 처럼 자체 absolute fullbleed 레이아웃을 가진 페이지가 그 안에서
+   제대로 동작하도록 wrap 도 relative + 최소 높이 확보 */
+.page-transition-wrap {
+  position: relative;
+  min-height: 100%;
+  will-change: transform;
+}
 
 .disclaimer {
   text-align: center;
