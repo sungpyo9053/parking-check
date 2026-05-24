@@ -9,11 +9,6 @@ import type {
 } from "../types/parking";
 import KakaoMap, { MapMarker } from "../components/KakaoMap";
 import AnalysisHeader from "../components/analysis/AnalysisHeader";
-import VerdictCard from "../components/analysis/VerdictCard";
-import ParkingHellLevelCard from "../components/analysis/ParkingHellLevelCard";
-import CarCompatibilityCard from "../components/analysis/CarCompatibilityCard";
-import DrivingScenarioTimeline from "../components/analysis/DrivingScenarioTimeline";
-import ShareablePunchline from "../components/analysis/ShareablePunchline";
 import AnalysisBottomSheet, {
   SheetState,
 } from "../components/analysis/AnalysisBottomSheet";
@@ -22,7 +17,6 @@ import PlanBPanel from "../components/analysis/PlanBPanel";
 import AlternativePlaceSection from "../components/analysis/AlternativePlaceSection";
 import VisitFeedbackCard from "../components/analysis/VisitFeedbackCard";
 import SelfParkingCard from "../components/analysis/SelfParkingCard";
-import MenuCard from "../components/analysis/MenuCard";
 import ParkingCandidateSection from "../components/analysis/ParkingCandidateSection";
 import DataBasisPanel from "../components/analysis/DataBasisPanel";
 import { buildVerdict, selfParkingCopy } from "../utils/parkingPresentation";
@@ -31,6 +25,10 @@ import { getGroup } from "../lib/favoritesGroup";
 import { sharePage } from "../lib/share";
 import ShareImageCard from "../components/analysis/ShareImageCard";
 import { AnalysisSkeleton } from "../components/Skeleton";
+import ResultVerdictCard from "../components/analysis/ResultVerdictCard";
+import JudgmentReasonCard from "../components/analysis/JudgmentReasonCard";
+import RecommendedActionCard from "../components/analysis/RecommendedActionCard";
+import { applySeo } from "../lib/seo";
 
 function getUserToken(): string {
   try {
@@ -402,6 +400,23 @@ export default function AnalysisPage() {
   }
 
   const verdict = data ? buildVerdict(data) : null;
+
+  // SEO — 동적 title/og 메타. 장소명 기반.
+  useEffect(() => {
+    if (!data || !verdict) return;
+    const name = data.destination.name || placeName || "분석 결과";
+    const desc =
+      verdict.kind === "good"
+        ? `${name}의 주차 가능성을 확인하세요. 자체 주차 가능성·근처 주차장·도보 거리 한 번에.`
+        : verdict.kind === "bad"
+          ? `${name} 차량 방문 시 주차가 어려울 수 있습니다. 대중교통 추천 정보를 확인하세요.`
+          : `${name}은(는) 주차 정보가 명확하지 않아 방문 전 주변 주차장을 먼저 확인하는 것을 추천합니다.`;
+    applySeo({
+      title: `${name} 주차될까? | 주차 가능성 분석`,
+      description: desc,
+      url: typeof window !== "undefined" ? window.location.href : undefined,
+    });
+  }, [data, verdict, placeName]);
   const selfCopy = data ? selfParkingCopy(data) : null;
   const dest = data?.destination;
   const destName = data?.destination.name || placeName || "목적지";
@@ -459,37 +474,61 @@ export default function AnalysisPage() {
         <AnalysisBottomSheet
           state={sheetState}
           onChangeState={setSheetState}
-          peek={<VerdictCard verdict={verdict} />}
+          peek={
+            <ResultVerdictCard
+              destName={destName}
+              verdict={verdict}
+              data={data}
+            />
+          }
           body={
             <>
-              {/* 흐름 2: 주차 헬 난이도 (Stress 대체) */}
-              <ParkingHellLevelCard verdict={verdict} />
+              {/* 2. 판단 근거 */}
+              <JudgmentReasonCard data={data} verdict={verdict} />
 
-              {/* 신박 1: 내 차 궁합 */}
-              <CarCompatibilityCard data={data} verdict={verdict} />
-
-              {/* 흐름 3: 플랜 A — 1순위 주차 플랜 */}
+              {/* 3. 1순위 주차 플랜 (검색 결과의 핵심 답) */}
               <PlanACard data={data} destName={destName} />
 
-              {/* 신박 3: 차 가져가면 예상 시나리오 */}
-              <DrivingScenarioTimeline data={data} verdict={verdict} />
+              {/* 4. 주변 주차장 후보 — anchor 로 RecommendedAction 의 "근처 확인" 버튼이 스크롤 */}
+              <div id="anchor-nearby-parking">
+                <ParkingCandidateSection
+                  dbCandidates={data.candidates}
+                  usableExt={usableExt}
+                  cautionExt={cautionExt}
+                  excluded={excluded}
+                  destinationLat={dest.lat}
+                  destinationLng={dest.lng}
+                  destinationName={destName}
+                  onSelectDb={startVisit}
+                />
+              </div>
 
-              {/* 흐름 4: 주차 실패했어요 — 플랜 B 토글 */}
-              <PlanBPanel data={data} destName={destName} />
+              {/* 5. 추천 행동 */}
+              <RecommendedActionCard
+                destName={destName}
+                onShare={doShare}
+                onScrollToNearby={() => {
+                  const el = document.getElementById("anchor-nearby-parking");
+                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              />
 
-              {/* 흐름 5: 주차 쉬운 대체 장소 (uncertain/unavailable/unknown 일 때만) */}
+              {/* 조건부: 자체주차 어렵거나 모름이면 PlanB / 대체 장소 추천 */}
               {(verdict.kind === "caution" ||
                 verdict.kind === "bad" ||
                 verdict.kind === "unknown") && (
-                <AlternativePlaceSection
-                  destLat={dest.lat}
-                  destLng={dest.lng}
-                  destCategoryGroup={null}
-                  destName={destName}
-                />
+                <>
+                  <PlanBPanel data={data} destName={destName} />
+                  <AlternativePlaceSection
+                    destLat={dest.lat}
+                    destLng={dest.lng}
+                    destCategoryGroup={null}
+                    destName={destName}
+                  />
+                </>
               )}
 
-              {/* 보조: 자체주차 evidence 인용 (셀프 라벨링 버튼은 제거 — VisitFeedbackCard 로 통일) */}
+              {/* 보조 (접힘): 자체 주차 evidence + 사용자 피드백 */}
               <SelfParkingCard
                 data={data}
                 copy={selfCopy}
@@ -498,50 +537,6 @@ export default function AnalysisPage() {
                 feedbackJustSent={feedbackJustSent}
                 onFeedback={sendFeedback}
               />
-
-              {data.menu && data.menu.items.length > 0 && (
-                <MenuCard menu={data.menu} />
-              )}
-
-              {/* 보조: 전체 후보 리스트 (참고용, 펼치기로 둘 수 있음) */}
-              <ParkingCandidateSection
-                dbCandidates={data.candidates}
-                usableExt={usableExt}
-                cautionExt={cautionExt}
-                excluded={excluded}
-                destinationLat={dest.lat}
-                destinationLng={dest.lng}
-                destinationName={destName}
-                onSelectDb={startVisit}
-              />
-
-              {data.history_for_destination.length > 0 && (
-                <>
-                  <h2 className="h2" style={{ marginTop: 16 }}>
-                    이 목적지의 과거 기록
-                  </h2>
-                  <ul className="list">
-                    {data.history_for_destination.map((h) => (
-                      <li key={h.visit_id} className="list-item">
-                        <span className="title">
-                          {h.selected_parking_name || "(주차장 미선택)"}
-                        </span>
-                        <span className="sub">
-                          {new Date(h.searched_at).toLocaleString("ko-KR")}
-                          {" · "}
-                          {h.actual_result ?? "결과 미입력"}
-                        </span>
-                        {h.memo && <span className="sub">메모: {h.memo}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-
-              {/* 신박 4: 공유용 한 줄 밈 */}
-              <ShareablePunchline verdict={verdict} />
-
-              {/* 흐름 6: 방문 후 3초 제보 */}
               <VisitFeedbackCard
                 placeId={data.destination.place_id ?? null}
                 feedbackBusy={feedbackBusy}
@@ -550,7 +545,42 @@ export default function AnalysisPage() {
                 onSubmit={({ answer, note }) => sendFeedback(answer, note)}
               />
 
+              {/* 6. 주의 문구 + 데이터 출처 */}
+              <div className="result-disclaimer">
+                <p>
+                  <strong>방문 전 참고용 정보입니다.</strong> 실시간 주차 가능 대수,
+                  요금, 운영 여부는 실제 현장 상황과 다를 수 있습니다.
+                </p>
+              </div>
               <DataBasisPanel />
+
+              {/* 하단 재검색 */}
+              <div className="result-research">
+                <h3 className="result-research-title">다른 장소도 확인할까요?</h3>
+                <form
+                  className="lh-hero-search"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const q = (
+                      e.currentTarget.querySelector("input") as HTMLInputElement
+                    )?.value?.trim();
+                    if (!q) return;
+                    navigate(`/places?q=${encodeURIComponent(q)}`);
+                  }}
+                >
+                  <div className="lh-search-row">
+                    <span className="lh-search-icon" aria-hidden>🔎</span>
+                    <input
+                      type="search"
+                      inputMode="search"
+                      placeholder="다른 장소명을 입력하세요"
+                    />
+                  </div>
+                  <button type="submit" className="lh-hero-cta">
+                    주차 가능성 확인하기
+                  </button>
+                </form>
+              </div>
             </>
           }
         />
