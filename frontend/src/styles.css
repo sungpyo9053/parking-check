@@ -978,8 +978,8 @@ button {
   height: 78vh;
 }
 .sheet-expanded {
-  /* expanded 상태에서는 상단 카드/지도가 거의 다 가려지고 결과만 본다. */
-  height: calc(100vh - 36px - env(safe-area-inset-top, 0));
+  /* expanded 상태에서도 토프바(즐겨찾기★/뒤로/공유)는 항상 보이게 — 시트가 토프바 아래까지만 차오름. */
+  height: calc(100vh - 56px - env(safe-area-inset-top, 0));
 }
 
 /* 핸들 — tap area 키움 + 텍스트 힌트로 affordance 명확 */
