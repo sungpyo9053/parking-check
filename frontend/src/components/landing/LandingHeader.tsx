@@ -25,7 +25,10 @@ export default function LandingHeader({ onSearchClick }: Props) {
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         >
           <span className="lh-logo-emoji">🅿️</span>
-          <span className="lh-logo-text">주차될까</span>
+          <span className="lh-logo-text">
+            주차될까
+            <span className="lh-logo-by">by ReviewDr</span>
+          </span>
         </button>
 
         <nav className="lh-nav lh-nav-desktop">
@@ -36,7 +39,7 @@ export default function LandingHeader({ onSearchClick }: Props) {
         </nav>
 
         <button className="lh-header-cta" onClick={onSearchClick}>
-          장소 검색
+          🔎 장소 검색
         </button>
 
         <button

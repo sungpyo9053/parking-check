@@ -1759,9 +1759,10 @@ button {
   background: var(--color-primary-soft);
   color: var(--color-primary-strong);
 }
+/* 컬러 일원화 — warn 태그도 메인 톤(블루)으로 통일. verdict 색감은 mockup 카드 안에서만. */
 .lh-tag-warn {
-  background: #fff4e0;
-  color: #b25f00;
+  background: var(--color-primary-soft);
+  color: var(--color-primary-strong);
 }
 .lh-section-title {
   font-size: 26px;
@@ -1798,17 +1799,31 @@ button {
 .lh-logo {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   background: none;
   border: none;
   padding: 0;
   cursor: pointer;
-  font-weight: 800;
-  font-size: 17px;
   letter-spacing: -0.02em;
   color: var(--color-text-primary);
+  font-family: inherit;
 }
-.lh-logo-emoji { font-size: 18px; }
+.lh-logo-emoji { font-size: 20px; line-height: 1; }
+.lh-logo-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-weight: 800;
+  font-size: 17px;
+  line-height: 1.1;
+}
+.lh-logo-by {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-top: 1px;
+}
 .lh-nav {
   display: flex;
   gap: 4px;
@@ -2023,38 +2038,67 @@ button {
   font-weight: 800;
 }
 .lh-mock-badge-caution {
-  background: #fff4e0;
+  background: var(--color-verdict-uncertain-bg);
   color: #b25f00;
 }
 .lh-mock-time {
   font-size: 11px;
   color: var(--color-text-muted);
+  font-weight: 600;
 }
 .lh-mock-place {
   font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.02em;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
+}
+.lh-mock-verdict {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  background: var(--color-bg-soft);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.lh-mock-rows {
+  display: flex;
+  flex-direction: column;
 }
 .lh-mock-row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  padding: 8px 0;
+  padding: 9px 0;
   border-top: 1px solid var(--color-border);
-  font-size: 14px;
+  font-size: 13px;
+  gap: 12px;
 }
+.lh-mock-row:first-child { border-top: none; }
 .lh-mock-label {
   color: var(--color-text-muted);
   font-weight: 600;
   font-size: 12px;
+  flex-shrink: 0;
 }
 .lh-mock-val {
   color: var(--color-text-primary);
   font-weight: 600;
   text-align: right;
+  word-break: keep-all;
 }
 .lh-mock-warn { color: var(--color-verdict-uncertain); }
+.lh-mock-emph { color: var(--color-primary-strong); font-weight: 800; }
+.lh-mock-footnote {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--color-border-strong);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+}
 
 @media (min-width: 880px) {
   .lh-hero {

@@ -87,20 +87,43 @@ export default function LandingHero({ query, onQueryChange, onSubmit }: Props) {
             <span className="lh-mock-badge lh-mock-badge-caution">
               ⚠️ 주차 까다로움
             </span>
-            <span className="lh-mock-time">방금 분석</span>
+            <span className="lh-mock-time">미리보기</span>
           </div>
           <div className="lh-mock-place">성수동 ○○ 카페</div>
-          <div className="lh-mock-row">
-            <span className="lh-mock-label">자체 주차</span>
-            <span className="lh-mock-val lh-mock-warn">없음</span>
+
+          <div className="lh-mock-verdict">
+            대중교통 추천 — 차 가져가면 골목 헤맬 확률 높음
           </div>
-          <div className="lh-mock-row">
-            <span className="lh-mock-label">1순위 대안</span>
-            <span className="lh-mock-val">성수 공영주차장 · 도보 4분</span>
+
+          <div className="lh-mock-rows">
+            <div className="lh-mock-row">
+              <span className="lh-mock-label">주차 난이도</span>
+              <span className="lh-mock-val lh-mock-warn">까다로움</span>
+            </div>
+            <div className="lh-mock-row">
+              <span className="lh-mock-label">자체 주차장</span>
+              <span className="lh-mock-val">없음</span>
+            </div>
+            <div className="lh-mock-row">
+              <span className="lh-mock-label">근처 주차장</span>
+              <span className="lh-mock-val">성수 공영 · 노상공영 · 민영 3곳</span>
+            </div>
+            <div className="lh-mock-row">
+              <span className="lh-mock-label">1순위 대안</span>
+              <span className="lh-mock-val lh-mock-emph">성수 공영주차장</span>
+            </div>
+            <div className="lh-mock-row">
+              <span className="lh-mock-label">도보 거리</span>
+              <span className="lh-mock-val">320m · 도보 4분</span>
+            </div>
+            <div className="lh-mock-row">
+              <span className="lh-mock-label">기본요금</span>
+              <span className="lh-mock-val">30분 1,000원 · 일 12,000원</span>
+            </div>
           </div>
-          <div className="lh-mock-row">
-            <span className="lh-mock-label">기본요금</span>
-            <span className="lh-mock-val">30분 1,000원 / 일 12,000원</span>
+
+          <div className="lh-mock-footnote">
+            * 방문 전 참고용 정보입니다. 실시간 잔여 대수가 아닙니다.
           </div>
         </div>
       </motion.div>
