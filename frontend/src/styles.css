@@ -240,25 +240,55 @@ button {
 /* form */
 .search-box {
   display: flex;
-  gap: 8px;
-  margin: 12px 0;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-5);
 }
 
 .search-box input {
   flex: 1;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  font-size: 16px;
+  padding: 16px 18px;
+  border: 1.5px solid transparent;
+  border-radius: 16px;
+  background: var(--color-bg-soft);
+  color: var(--color-text-primary);
+  font-size: 17px;
+  font-weight: var(--font-weight-medium);
+  font-family: inherit;
+  letter-spacing: -0.01em;
+  transition: background 120ms ease-out, border-color 120ms ease-out,
+    box-shadow 120ms ease-out;
+}
+.search-box input::placeholder {
+  color: var(--color-text-muted);
+}
+.search-box input:focus {
+  outline: none;
+  background: var(--color-bg-card);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(49, 130, 246, 0.12);
 }
 
 .search-box button {
-  padding: 12px 16px;
-  background: var(--brand);
-  color: #fff;
+  padding: 16px 22px;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
   border: none;
-  border-radius: 10px;
-  font-weight: 600;
+  border-radius: 16px;
+  font-weight: var(--font-weight-bold);
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(49, 130, 246, 0.24);
+  transition: transform 120ms ease-out, background 120ms ease-out,
+    box-shadow 120ms ease-out;
+}
+.search-box button:hover {
+  transform: translateY(-1px);
+  background: var(--color-primary-strong);
+  box-shadow: 0 4px 12px rgba(49, 130, 246, 0.32);
+}
+.search-box button:active {
+  transform: translateY(0);
 }
 
 /* list */
@@ -1614,6 +1644,74 @@ button {
 /* ============================================================ */
 /* Home mode entries (/judge, /basecamp)                        */
 /* ============================================================ */
+/* Home — 그룹 즐겨찾기 토스 톤 배너 */
+.home-group-banner {
+  background: var(--color-primary-soft);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  font-size: 13px;
+  margin-bottom: var(--space-3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.home-group-banner-text {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+.home-group-code {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  color: var(--color-primary-strong);
+  background: rgba(255, 255, 255, 0.6);
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-weight: var(--font-weight-bold);
+}
+.home-group-actions {
+  display: flex;
+  gap: 6px;
+}
+.home-group-btn {
+  flex: none;
+  padding: 8px 14px;
+  font-size: 13px;
+  border-radius: 10px;
+}
+.home-group-btn-danger {
+  color: var(--color-verdict-unavailable);
+  border-color: var(--color-verdict-unavailable);
+  background: #fff;
+}
+.home-group-btn-danger:hover {
+  background: var(--color-verdict-unavailable-bg);
+}
+.home-group-join {
+  display: flex;
+  gap: 8px;
+}
+.home-group-join-input {
+  flex: 1;
+  padding: 12px 14px;
+  border: 1.5px solid transparent;
+  background: var(--color-bg-soft);
+  border-radius: 12px;
+  font-size: 15px;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  transition: background 120ms ease-out, border-color 120ms ease-out,
+    box-shadow 120ms ease-out;
+}
+.home-group-join-input:focus {
+  outline: none;
+  background: var(--color-bg-card);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(49, 130, 246, 0.12);
+}
+
 .home-mode-cards {
   display: flex;
   flex-direction: column;

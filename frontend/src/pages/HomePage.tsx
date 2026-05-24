@@ -200,43 +200,17 @@ export default function HomePage() {
       <h2 className="h2">★ 공유 즐겨찾기</h2>
       {group ? (
         <>
-          <div
-            style={{
-              background: "#fef3c7",
-              border: "1px solid #fcd34d",
-              borderRadius: 8,
-              padding: "8px 10px",
-              fontSize: 12,
-              marginBottom: 8,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 6,
-            }}
-          >
-            <span>
-              그룹 코드{" "}
-              <strong style={{ fontFamily: "monospace" }}>{group.code}</strong>
+          <div className="home-group-banner">
+            <span className="home-group-banner-text">
+              그룹 코드 <strong className="home-group-code">{group.code}</strong>
               {group.name ? ` · ${group.name}` : ""}
             </span>
-            <span style={{ display: "flex", gap: 6 }}>
-              <button
-                className="btn"
-                style={{ flex: "none", padding: "4px 10px", fontSize: 12 }}
-                onClick={shareGroup}
-              >
+            <span className="home-group-actions">
+              <button className="btn home-group-btn" onClick={shareGroup}>
                 📤 코드 공유
               </button>
               <button
-                className="btn"
-                style={{
-                  flex: "none",
-                  padding: "4px 10px",
-                  fontSize: 12,
-                  color: "#dc2626",
-                  borderColor: "#dc2626",
-                }}
+                className="btn home-group-btn home-group-btn-danger"
                 onClick={leaveGroup}
               >
                 나가기
@@ -299,24 +273,17 @@ export default function HomePage() {
             </button>
           </div>
           <form
+            className="home-group-join"
             onSubmit={(e) => {
               e.preventDefault();
               if (codeInput.trim()) joinGroup(codeInput);
             }}
-            style={{ display: "flex", gap: 6 }}
           >
             <input
+              className="home-group-join-input"
               placeholder="받은 코드 입력 (예: K7B4M9Q2)"
               value={codeInput}
               onChange={(e) => setCodeInput(e.target.value)}
-              style={{
-                flex: 1,
-                padding: "8px 10px",
-                border: "1px solid var(--line)",
-                borderRadius: 8,
-                fontSize: 14,
-                fontFamily: "monospace",
-              }}
             />
             <button
               className="btn"
