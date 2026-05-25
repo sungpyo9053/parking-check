@@ -26,6 +26,13 @@ export default function App() {
       </main>
       <footer className="disclaimer">
         ※ 실시간 정보는 현장과 차이가 있을 수 있습니다.
+        <div className="disclaimer-links">
+          <Link to="/terms">이용약관</Link>
+          <span className="disclaimer-sep">·</span>
+          <Link to="/privacy">개인정보처리방침</Link>
+          <span className="disclaimer-sep">·</span>
+          <a href="mailto:hello@reviewdr.kr">문의</a>
+        </div>
         {isHome && (
           <div className="disclaimer-brand">
             주차될까 <span className="disclaimer-by">· HIAILab</span>

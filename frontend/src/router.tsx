@@ -7,6 +7,8 @@ import VisitLogPage from "./pages/VisitLogPage";
 import VisitListPage from "./pages/VisitListPage";
 import JudgePage from "./pages/JudgePage";
 import BasecampPage from "./pages/BasecampPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
 
 export const router = createBrowserRouter([
   {
@@ -20,6 +22,8 @@ export const router = createBrowserRouter([
       { path: "visits", element: <VisitListPage /> },
       { path: "judge", element: <JudgePage /> },
       { path: "basecamp", element: <BasecampPage /> },
+      { path: "privacy", element: <PrivacyPage /> },
+      { path: "terms", element: <TermsPage /> },
     ],
   },
 ]);

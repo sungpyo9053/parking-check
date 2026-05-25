@@ -249,7 +249,7 @@ button {
   padding: 12px;
 }
 .disclaimer-brand {
-  margin-top: 8px;
+  margin-top: 6px;
   font-size: 12px;
   font-weight: 700;
   color: var(--color-text-secondary);
@@ -259,6 +259,75 @@ button {
   font-weight: 500;
   color: var(--color-text-muted);
   letter-spacing: 0.04em;
+}
+.disclaimer-links {
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  flex-wrap: wrap;
+}
+.disclaimer-links a {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+.disclaimer-links a:hover {
+  color: var(--color-primary-strong);
+  text-decoration: underline;
+}
+.disclaimer-sep {
+  color: var(--color-text-muted);
+  opacity: 0.5;
+}
+
+/* Legal pages — 약관/개인정보 단정한 톤 */
+.legal-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 20px 48px;
+  color: var(--color-text-primary);
+  line-height: 1.7;
+}
+.legal-back {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  margin-bottom: 16px;
+}
+.legal-back:hover { color: var(--color-primary-strong); }
+.legal-h1 {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  margin: 0 0 4px;
+}
+.legal-meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 0 0 24px;
+}
+.legal-section {
+  margin-bottom: 22px;
+  font-size: 14px;
+}
+.legal-section h2 {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+}
+.legal-section p, .legal-section li {
+  color: var(--color-text-secondary);
+}
+.legal-section ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+.legal-section a {
+  color: var(--color-primary-strong);
+  font-weight: 600;
 }
 
 /* form */
