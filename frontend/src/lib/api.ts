@@ -87,6 +87,7 @@ export type AnalyzeResponse = {
     data_quality: "rich" | "partial" | "sparse";
   };
   analysis_summary: string | null;
+  ai_summary: string | null;
   candidates: Candidate[];
   external_candidates: ExternalCandidate[];
   top_recommendation: TopRecommendation | null;

@@ -474,6 +474,39 @@ def analyze(
         if menu_items:
             menu_block = MenuBlock(items=[MenuItem(**m) for m in menu_items])
 
+    # Groq 한 줄 결론 — 분석 응답에 ai_summary 로 노출 (UI 카드에 자연어 표시)
+    try:
+        from ..services import llm_parking_verifier as llm_v
+
+        nearby_usable = sum(
+            1 for c in external_candidates
+            if c.usability == "usable" and (c.distance_m or 9999) <= 600
+        )
+        if self_parking.status in ("available", "likely"):
+            visit_label = "차량 방문 추천 — 자체 주차 가능"
+            dedicated = "있음"
+        elif top_rec is not None and nearby_usable >= 1:
+            visit_label = "조건부 추천 — 근처 주차장 활용"
+            dedicated = "없음" if self_parking.status == "unavailable" else "확인 필요"
+        elif top_rec is not None:
+            visit_label = "방문 전 확인 필요"
+            dedicated = "확인 필요"
+        else:
+            visit_label = "추천 정보 부족 — 대중교통 고려"
+            dedicated = "확인 필요"
+        ai_summary = llm_v.generate_summary(
+            place_name=dest_name,
+            visit_recommendation=visit_label,
+            has_dedicated=dedicated,
+            nearby_usable_count=nearby_usable,
+            top_walk_min=(top_rec.candidate.walking_minutes if top_rec else None),
+            top_rec_name=(top_rec.candidate.name if top_rec else None),
+        )
+    except Exception as e:  # noqa: BLE001
+        import logging as _lg
+        _lg.getLogger(__name__).warning("ai_summary failed: %s", e)
+        ai_summary = None
+
     response = AnalyzeResponse(
         destination=Destination(
             place_id=dest_place.id if dest_place else None,
@@ -489,6 +522,7 @@ def analyze(
         top_recommendation=top_rec,
         menu=menu_block,
         fallback=fallback,
+        ai_summary=ai_summary,
         analysis_summary=summarize_analysis(
             dest_name=dest_name,
             self_status=self_parking.status,

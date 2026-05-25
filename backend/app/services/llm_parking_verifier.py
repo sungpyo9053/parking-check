@@ -232,3 +232,72 @@ def verify_batch(items: list[dict]) -> list[VerifierResult | None]:
 
 def cache_stats() -> dict:
     return {"hit": _CACHE.stats(), "neg": _NEGATIVE_CACHE.stats()}
+
+
+_SUMMARY_CACHE: TTLCache[str, str] = TTLCache(max_size=512, ttl_seconds=6 * 3600)
+
+_SUMMARY_SYSTEM = """너는 한국 주차 가능성 판단 결과를 한 줄로 자연스럽게 요약하는
+어시스턴트다. 사용자가 차량 방문 결정에 도움될 한국어 한 문장(최대 80자)으로만 답한다.
+설명 텍스트나 인사말, JSON 등 X. 표현 규칙:
+- "주차 가능"이라고 단정하지 말고 "가능성", "추천", "확인 필요", "어려울 수 있음" 사용
+- 사용자에게 명확한 다음 행동(예: 도보 분 거리 추천, 대중교통 권유)을 한 문장에 녹임
+- 따옴표나 콜론 없이 평서문으로
+"""
+
+
+def generate_summary(
+    place_name: str,
+    visit_recommendation: str,
+    has_dedicated: str,
+    nearby_usable_count: int,
+    top_walk_min: int | None,
+    top_rec_name: str | None,
+) -> str | None:
+    """분석 결과 한 줄 자연어 요약 생성. 키 없으면 None.
+    캐시 키: (place_name, visit_rec, has_dedicated, nearby_count, walk) — 6h.
+    """
+    if not is_enabled():
+        return None
+    key = (
+        f"{place_name}|{visit_recommendation}|{has_dedicated}|"
+        f"{nearby_usable_count}|{top_walk_min}|{top_rec_name}"
+    )
+    cached = _SUMMARY_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    user_msg = (
+        f"장소: {place_name}\n"
+        f"차량 방문 판단: {visit_recommendation}\n"
+        f"자체 주차장: {has_dedicated}\n"
+        f"근처 일반 개방 주차장: {nearby_usable_count}곳\n"
+    )
+    if top_rec_name and top_walk_min is not None:
+        user_msg += f"1순위 추천: {top_rec_name} (도보 {top_walk_min}분)\n"
+    user_msg += "위 정보로 사용자에게 줄 한국어 한 줄 결론을 만들어줘 (80자 이내)."
+
+    s = get_settings()
+    payload = {
+        "model": s.GROQ_MODEL,
+        "temperature": 0.4,
+        "max_tokens": 180,
+        "messages": [
+            {"role": "system", "content": _SUMMARY_SYSTEM},
+            {"role": "user", "content": user_msg},
+        ],
+    }
+    data = _call_groq(payload, s.GROQ_API_KEY)
+    if not data:
+        return None
+    try:
+        content = data["choices"][0]["message"]["content"].strip()
+    except (KeyError, IndexError, TypeError):
+        return None
+    # 한 줄로 정리, 따옴표 제거
+    content = content.split("\n")[0].strip().strip('"').strip("「").strip("」")
+    if len(content) > 140:
+        content = content[:138] + "…"
+    if not content:
+        return None
+    _SUMMARY_CACHE.set(key, content)
+    return content

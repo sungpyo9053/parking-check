@@ -913,6 +913,44 @@ button {
   font-size: 13px;
   color: #1e40af;
 }
+/* AI 의견 노트 — PlanA 카드 안의 짧은 LLM reason */
+.top-rec-ai-note {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%);
+  border-left: 3px solid #8b5cf6;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.top-rec-ai-tag {
+  font-size: 11px;
+  font-weight: 800;
+  color: #6d28d9;
+  letter-spacing: -0.005em;
+  flex-shrink: 0;
+}
+.top-rec-ai-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
+/* AI summary 라벨 — ResultVerdictCard 한 줄 결론 옆 */
+.rv-ai-tag {
+  margin-top: 6px;
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6d28d9;
+  background: rgba(139, 92, 246, 0.10);
+  padding: 3px 8px;
+  border-radius: 999px;
+  letter-spacing: -0.005em;
+}
+
 /* AI 추천 배지 — Groq LLM 검증에서 일반 개방 강하게 판단한 후보 */
 .top-rec-badge-ai {
   display: inline-block;

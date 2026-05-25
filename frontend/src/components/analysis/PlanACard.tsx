@@ -143,6 +143,14 @@ export default function PlanACard({ data, destName }: Props) {
           </span>
         )}
       </div>
+      {/* AI 검증 의견 — Groq verdict open_to_public 일 때 짧게 카드 안에 노출 */}
+      {c.llm_recommended && c.llm_reason && (
+        <div className="top-rec-ai-note">
+          <span className="top-rec-ai-tag">🤖 AI 의견</span>
+          <span className="top-rec-ai-text">{c.llm_reason}</span>
+        </div>
+      )}
+
       {/* 카카오맵 detail — 요금/시간/면수/결제. 우리 디자인. */}
       {kakaoPid && (
         <div className="top-rec-detail">

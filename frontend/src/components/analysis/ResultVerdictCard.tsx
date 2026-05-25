@@ -2,6 +2,7 @@ import type { ParkingResult } from "../../utils/parkingResult";
 
 type Props = {
   result: ParkingResult;
+  aiSummary?: string | null;
 };
 
 const DIFF_TONE: Record<ParkingResult["difficulty"], "good" | "caution" | "tough" | "unknown"> = {
@@ -17,7 +18,7 @@ const VISIT_TONE: Record<ParkingResult["visitRecommendation"], "good" | "caution
   unknown: "unknown",
 };
 
-export default function ResultVerdictCard({ result }: Props) {
+export default function ResultVerdictCard({ result, aiSummary }: Props) {
   const diffTone = DIFF_TONE[result.difficulty];
   const visitTone = VISIT_TONE[result.visitRecommendation];
   const dedicatedTone: "good" | "warn" | "unknown" =
@@ -76,8 +77,11 @@ export default function ResultVerdictCard({ result }: Props) {
         </div>
       </div>
 
-      {/* 한 줄 결론 */}
-      <div className="rv-oneline">{result.summary}</div>
+      {/* 한 줄 결론 — Groq 생성 자연어 우선, 없으면 rule-based summary */}
+      <div className="rv-oneline">{aiSummary || result.summary}</div>
+      {aiSummary && (
+        <div className="rv-ai-tag">🤖 AI 한 줄 결론</div>
+      )}
 
       <div className="rv-score-foot">
         * 100점 만점 지표는 방문 전 참고용이며, 실시간 주차 가능 대수가 아닙니다.

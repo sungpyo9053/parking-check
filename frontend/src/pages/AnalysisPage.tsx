@@ -525,7 +525,7 @@ export default function AnalysisPage() {
 
       {data && verdict && selfCopy && dest && parkingResult && (
         <div className="analyze-result-stream">
-          <ResultVerdictCard result={parkingResult} />
+          <ResultVerdictCard result={parkingResult} aiSummary={data.ai_summary} />
           <>
               {/* 상단 재검색 — 현재 장소명 수정 가능 */}
               <form

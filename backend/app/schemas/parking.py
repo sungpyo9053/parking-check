@@ -232,6 +232,7 @@ class AnalyzeResponse(BaseModel):
     self_parking: SelfParking
     summary: AnalyzeSummary
     analysis_summary: str | None = None  # LLM 통합 요약 (Claude Haiku, 1~2 문장)
+    ai_summary: str | None = None  # Groq 생성 한 줄 결론 (UI 카드에 표시)
     candidates: list[Candidate]
     external_candidates: list[ExternalCandidate] = []
     top_recommendation: TopRecommendation | None = None
