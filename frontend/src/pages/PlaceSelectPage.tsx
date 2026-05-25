@@ -73,7 +73,7 @@ export default function PlaceSelectPage() {
             >
               {isAi && (
                 <span className="list-item-ai-badge" title={aiReason ?? ""}>
-                  🤖 AI 추천
+                  추천
                 </span>
               )}
               <span className="title">{p.name}</span>

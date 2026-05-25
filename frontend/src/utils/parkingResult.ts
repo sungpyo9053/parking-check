@@ -284,56 +284,44 @@ function buildActions(visit: VisitRecommendation, usableNear: number): Recommend
   if (visit === "conditional" || (visit === "unknown" && usableNear > 0)) {
     actions.push({
       id: "check_nearby",
-      icon: "🅿️",
+      icon: "",
       label: "근처 주차장 먼저 확인",
       sub: "후보 리스트에서 거리·요금 비교",
     });
   } else if (visit === "recommended") {
     actions.push({
       id: "set_nearby",
-      icon: "🅿️",
-      label: "근처 주차장을 목적지로",
-      sub: "추천 주차장으로 길찾기 시작",
+      icon: "",
+      label: "근처 주차장 길찾기",
+      sub: "추천 주차장까지 도보 경로",
     });
   }
 
   if (visit === "not_recommended") {
     actions.push({
       id: "public_transport",
-      icon: "🚇",
+      icon: "",
       label: "대중교통 또는 택시",
       sub: "카카오맵 길찾기로 빠르게 비교",
     });
   } else if (visit === "unknown") {
     actions.push({
       id: "verify",
-      icon: "🗺️",
+      icon: "",
       label: "지도 앱에서 한 번 더 확인",
       sub: "매장 안내·카카오맵 주차 정보 확인",
     });
   }
 
   actions.push({
-    id: "modu_parking",
-    icon: "📲",
-    label: "모두의주차장 앱",
-    sub: "실시간 자리·예약 가능 여부 확인",
-  });
-  actions.push({
-    id: "modu_ev",
-    icon: "⚡",
-    label: "모두의전기차 앱",
-    sub: "EV 충전소 실시간 가용·결제",
-  });
-  actions.push({
     id: "search_other",
-    icon: "🔎",
+    icon: "",
     label: "다른 장소 검색",
     sub: "비슷한 장소도 함께 비교",
   });
   actions.push({
     id: "share",
-    icon: "📤",
+    icon: "",
     label: "결과 공유",
     sub: "동승자에게 한 번에 전달",
   });

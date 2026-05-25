@@ -27,6 +27,7 @@ import { AnalysisSkeleton } from "../components/Skeleton";
 import ResultVerdictCard from "../components/analysis/ResultVerdictCard";
 import JudgmentReasonCard from "../components/analysis/JudgmentReasonCard";
 import RecommendedActionCard from "../components/analysis/RecommendedActionCard";
+import AskAiCard from "../components/analysis/AskAiCard";
 import { applySeo } from "../lib/seo";
 import { buildParkingResult } from "../utils/parkingResult";
 
@@ -554,6 +555,14 @@ export default function AnalysisPage() {
 
               {/* 판단 근거 */}
               <JudgmentReasonCard result={parkingResult} />
+
+              {/* AI 자유 질문 — Groq Q&A */}
+              <AskAiCard
+                placeName={parkingResult.placeName}
+                result={parkingResult}
+                topRecName={data.top_recommendation?.candidate.name ?? null}
+                topWalkMin={data.top_recommendation?.candidate.walking_minutes ?? null}
+              />
 
               {/* 추천 행동 (결론 → 근거 → 행동 순서) */}
               <RecommendedActionCard

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -377,12 +378,14 @@ def analyze(
         from ..services import llm_parking_verifier as llm_v
 
         if llm_v.is_enabled() and external_candidates:
-            # TPM 한도 보호 — 거리 가까운 8건만 LLM 검증 (1순위 + 주변 핵심 후보)
+            # 비용/TPM 한도 보호 — 가장 가까운 3건만 LLM 검증.
+            # 1순위 + 그 옆 후보들이 회사/관공서 자체 주차장인지 차단이 핵심.
+            # 그 이상은 classifier 룰(60+ 키워드) 만으로 충분.
             sorted_by_dist = sorted(
                 enumerate(external_candidates),
                 key=lambda x: x[1].distance_m if x[1].distance_m is not None else 99999,
             )
-            target_indices = [i for i, _ in sorted_by_dist[:8]]
+            target_indices = [i for i, _ in sorted_by_dist[:3]]
             target_set = set(target_indices)
             batch_input = [
                 {
@@ -659,4 +662,39 @@ def kakao_detail(
             detail="kakao_place_id 또는 url(place.map.kakao.com/...) 필요",
         )
     detail = fetch_kakao_detail(pid)
-    return detail  # None 허용 — 카카오에 데이터 없는 후보 (민영 작은 주차장 등)
+    return detail
+
+
+class AskRequest(BaseModel):
+    place_name: str
+    place_id: int | None = None
+    question: str
+    visit_label: str | None = None
+    dedicated: str | None = None
+    nearby_count: int | None = None
+    top_rec_name: str | None = None
+    top_walk_min: int | None = None
+    top_fee_text: str | None = None
+
+
+@router.post("/ask")
+def ask_about_place(req: AskRequest):
+    """AI 자유 질문 — 사용자가 분석 결과 페이지에서 자유 텍스트로 질문하면
+    Groq 가 분석 컨텍스트 기반 답변."""
+    from ..services import llm_parking_verifier as llm_v
+
+    answer = llm_v.answer_question(
+        req.question,
+        {
+            "place_name": req.place_name,
+            "visit_label": req.visit_label,
+            "dedicated": req.dedicated,
+            "nearby_count": req.nearby_count,
+            "top_rec_name": req.top_rec_name,
+            "top_walk_min": req.top_walk_min,
+            "top_fee_text": req.top_fee_text,
+        },
+    )
+    if not answer:
+        return {"answer": None, "error": "현재 답변을 생성하지 못했어요. 잠시 후 다시 시도해 주세요."}
+    return {"answer": answer, "error": None}

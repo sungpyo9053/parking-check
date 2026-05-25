@@ -45,17 +45,16 @@ export default function ResultVerdictCard({ result, aiSummary }: Props) {
           <div className="rv-confidence">정보 신뢰도 · {result.confidenceLabel}</div>
         </div>
         <div className="rv-score-wrap" title="100점 만점 참고 지표">
-          <div className="rv-score-value">
-            <span className="rv-score-num">{result.score}</span>
-            <span className="rv-score-unit">점</span>
-          </div>
           <div className="rv-score-meter" aria-hidden>
             <div
               className={`rv-score-fill rv-fill-${diffTone}`}
               style={{ width: `${Math.max(2, Math.min(100, result.score))}%` }}
             />
           </div>
-          <div className="rv-score-caption">주차 가능성 지표</div>
+          <div className="rv-score-caption">
+            <span className="rv-score-small">{result.score}/100</span>
+            <span className="rv-score-label">참고 지표</span>
+          </div>
         </div>
       </div>
 
@@ -77,11 +76,8 @@ export default function ResultVerdictCard({ result, aiSummary }: Props) {
         </div>
       </div>
 
-      {/* 한 줄 결론 — Groq 생성 자연어 우선, 없으면 rule-based summary */}
+      {/* 한 줄 결론 — Groq 자연어 우선, 없으면 rule-based. AI 라벨 노출 X (프로 톤). */}
       <div className="rv-oneline">{aiSummary || result.summary}</div>
-      {aiSummary && (
-        <div className="rv-ai-tag">🤖 AI 한 줄 결론</div>
-      )}
 
       <div className="rv-score-foot">
         * 100점 만점 지표는 방문 전 참고용이며, 실시간 주차 가능 대수가 아닙니다.

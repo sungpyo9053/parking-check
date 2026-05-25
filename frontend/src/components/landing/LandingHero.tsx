@@ -18,7 +18,7 @@ export default function LandingHero({ query, onQueryChange, onSubmit }: Props) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          🚗 출발 전 1초, 주차 미리보기
+          출발 전 1초, 주차 미리보기
         </motion.div>
 
         <motion.h1

@@ -985,30 +985,110 @@ button {
   font-weight: 600;
 }
 
-/* PlaceSelectPage AI 추천 핀 */
+/* PlaceSelectPage AI 추천 — 단정한 토스블루 톤 */
 .list-item-ai {
-  border: 1.5px solid #8b5cf6 !important;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.06) 0%, rgba(99, 102, 241, 0.06) 100%);
-  position: relative;
+  border: 1.5px solid var(--color-primary) !important;
+  background: var(--color-primary-soft);
 }
 .list-item-ai-badge {
-  position: absolute;
-  top: -8px;
-  left: 12px;
-  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-  color: #fff;
+  display: inline-block;
   font-size: 11px;
-  font-weight: 800;
-  padding: 3px 9px;
-  border-radius: 999px;
+  font-weight: 700;
+  color: var(--color-primary-strong);
   letter-spacing: -0.01em;
-  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.32);
+  margin-bottom: 4px;
 }
 .list-item-ai-reason {
   margin-top: 4px;
   font-size: 11px;
-  font-style: italic;
-  color: #6d28d9;
+  color: var(--color-text-muted);
+}
+
+/* Ask AI 카드 */
+.ask-card { background: #f7faff; border-color: #d9e6ff; }
+.ask-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.ask-suggestion {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+}
+.ask-suggestion:hover {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-strong);
+  border-color: var(--color-primary);
+}
+.ask-turn { margin-bottom: 10px; }
+.ask-q {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  background: #fff;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 4px;
+}
+.ask-a {
+  font-size: 13px;
+  color: var(--color-text-primary);
+  background: var(--color-primary-soft);
+  border-radius: 10px;
+  padding: 10px 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.ask-loading {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  padding: 6px 0;
+}
+.ask-error {
+  font-size: 12px;
+  color: var(--color-verdict-unavailable);
+  padding: 6px 0;
+}
+.ask-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.ask-form input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 10px;
+  font-size: 13px;
+  font-family: inherit;
+}
+.ask-form input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.12);
+}
+.ask-submit {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ask-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+.ask-foot {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--color-text-muted);
 }
 
 /* AI 의견 노트 — PlanA 카드 안의 짧은 LLM reason */
@@ -2030,29 +2110,10 @@ button {
 .rv-score-wrap {
   flex-shrink: 0;
   text-align: right;
-  min-width: 96px;
-}
-.rv-score-value {
-  display: flex;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: 2px;
-  line-height: 1;
-}
-.rv-score-num {
-  font-size: 30px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--color-text-primary);
-}
-.rv-score-unit {
-  font-size: 13px;
-  color: var(--color-text-muted);
-  font-weight: 700;
+  min-width: 100px;
 }
 .rv-score-meter {
-  margin-top: 6px;
-  height: 5px;
+  height: 6px;
   background: #e5e8eb;
   border-radius: 999px;
   overflow: hidden;
@@ -2067,10 +2128,21 @@ button {
 .rv-fill-tough { background: var(--color-verdict-unavailable); }
 .rv-fill-unknown { background: var(--color-verdict-unknown); }
 .rv-score-caption {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  align-items: baseline;
+  margin-top: 6px;
+}
+.rv-score-small {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.rv-score-label {
   font-size: 10px;
   color: var(--color-text-muted);
-  margin-top: 4px;
-  letter-spacing: -0.005em;
 }
 .rv-score-foot {
   margin-top: 10px;

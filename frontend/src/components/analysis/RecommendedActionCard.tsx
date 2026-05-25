@@ -80,7 +80,7 @@ export default function RecommendedActionCard({
             type="button"
             onClick={() => runAction(a.id)}
           >
-            <span className="ract-icon">{a.icon}</span>
+            {a.icon && <span className="ract-icon">{a.icon}</span>}
             <span className="ract-body">
               <span className="ract-title">{a.label}</span>
               <span className="ract-sub">{a.sub}</span>

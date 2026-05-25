@@ -267,6 +267,21 @@ export const api = {
       `/api/parking/kakao-detail?kakao_place_id=${encodeURIComponent(kakaoPlaceId)}`,
     ),
 
+  askAboutPlace: (body: {
+    place_name: string;
+    question: string;
+    visit_label?: string | null;
+    dedicated?: string | null;
+    nearby_count?: number | null;
+    top_rec_name?: string | null;
+    top_walk_min?: number | null;
+    top_fee_text?: string | null;
+  }) =>
+    request<{ answer: string | null; error: string | null }>(
+      `/api/parking/ask`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
   nearbyPois: (params: { lat: number; lng: number; category: "ev" | "subway" | "bus"; radius_m?: number }) => {
     const q = new URLSearchParams({
       lat: String(params.lat),

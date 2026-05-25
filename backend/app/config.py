@@ -48,7 +48,13 @@ class Settings(BaseSettings):
     # Groq API — 1순위 추천 주차장의 일반 개방 여부 LLM 검증 (피드백 거위 버그
     # 방지). OpenAI 호환 API, 빠른 inference. 없으면 graceful skip.
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.1-8b-instant"
+    # 용도 분리 (TPM 한도 보호 + 정확도 ↑)
+    # 분류/검증/의도 — 빠르고 TPM 큰 gemma2-9b (15k TPM)
+    GROQ_MODEL_CLASSIFY: str = "gemma2-9b-it"
+    # 자연어 요약/공유 카피 — 더 좋은 문장 llama-3.3-70b (12k TPM)
+    GROQ_MODEL_GENERATE: str = "llama-3.3-70b-versatile"
+    # 하위 호환 (단일 모델 fallback)
+    GROQ_MODEL: str = "gemma2-9b-it"
     LLM_VERIFY_ENABLED: bool = True
 
     @property

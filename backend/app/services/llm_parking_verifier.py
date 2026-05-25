@@ -91,6 +91,16 @@ def is_enabled() -> bool:
     return bool(s.LLM_VERIFY_ENABLED and s.GROQ_API_KEY)
 
 
+def _model_classify() -> str:
+    s = get_settings()
+    return s.GROQ_MODEL_CLASSIFY or s.GROQ_MODEL
+
+
+def _model_generate() -> str:
+    s = get_settings()
+    return s.GROQ_MODEL_GENERATE or s.GROQ_MODEL
+
+
 def _call_groq(payload: dict, api_key: str) -> dict | None:
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -172,7 +182,7 @@ def verify(
         f"방문 목적지: {destination_name or '미상'}"
     )
     payload = {
-        "model": s.GROQ_MODEL,
+        "model": _model_classify(),
         "temperature": 0.0,
         "max_tokens": 100,
         "response_format": {"type": "json_object"},
@@ -275,7 +285,7 @@ def pick_search_intent(query: str, candidates: list[dict]) -> dict | None:
     user_msg = f"검색어: {query}\n\n후보:\n{cand_text}"
     s = get_settings()
     payload = {
-        "model": s.GROQ_MODEL,
+        "model": _model_classify(),
         "temperature": 0.0,
         "max_tokens": 160,
         "response_format": {"type": "json_object"},
@@ -315,7 +325,7 @@ def pick_search_intent(query: str, candidates: list[dict]) -> dict | None:
 
 
 def generate_share_text(place_name: str, visit_label: str, score: int) -> str | None:
-    """공유용 한 줄 카피 동적 생성."""
+    """공유용 한 줄 카피 동적 생성 (자연어 모델 사용)."""
     if not is_enabled():
         return None
     key = f"{place_name}|{visit_label}|{score}"
@@ -328,7 +338,7 @@ def generate_share_text(place_name: str, visit_label: str, score: int) -> str | 
         "카카오톡/SNS 공유용 한국어 한 줄 카피 (60자 이내, 따옴표/이모지 X)."
     )
     payload = {
-        "model": s.GROQ_MODEL,
+        "model": _model_generate(),
         "temperature": 0.5,
         "max_tokens": 140,
         "messages": [
@@ -357,6 +367,93 @@ def generate_share_text(place_name: str, visit_label: str, score: int) -> str | 
         return None
     _SHARE_CACHE.set(key, content)
     return content
+
+
+_QA_SYSTEM = """너는 한국 운전자에게 주차/방문 조언을 한국어로 해주는 비서다.
+사용자가 특정 장소에 대해 질문하면, 제공된 분석 정보를 바탕으로 간결하게 답한다.
+규칙:
+- "주차 가능"이라고 단정하지 말고 "주차 가능성/난이도/방문 전 확인" 표현
+- 사용자가 모르는 정보는 솔직히 "현재 데이터로는 알 수 없습니다" 라고 답
+- 2~3 문장, 60~120자, 평서문
+- 따옴표/이모지/JSON 금지
+"""
+
+
+def answer_question(question: str, context: dict) -> str | None:
+    """사용자 자유 질문 답변. context = {place_name, visit_label, dedicated,
+    nearby_count, top_rec_name, top_walk_min, top_fee_text}.
+    """
+    if not is_enabled() or not question.strip():
+        return None
+    ctx_lines = [
+        f"장소: {context.get('place_name','미상')}",
+        f"차량 방문 판단: {context.get('visit_label','정보 부족')}",
+        f"자체 주차장: {context.get('dedicated','확인 필요')}",
+        f"근처 일반 개방 주차장: {context.get('nearby_count',0)}곳",
+    ]
+    if context.get("top_rec_name"):
+        ctx_lines.append(
+            f"1순위 주차장: {context['top_rec_name']} (도보 {context.get('top_walk_min','?')}분)"
+        )
+    if context.get("top_fee_text"):
+        ctx_lines.append(f"1순위 요금: {context['top_fee_text']}")
+    ctx = "\n".join(ctx_lines)
+    s = get_settings()
+    payload = {
+        "model": _model_generate(),
+        "temperature": 0.5,
+        "max_tokens": 280,
+        "messages": [
+            {"role": "system", "content": _QA_SYSTEM},
+            {
+                "role": "user",
+                "content": f"분석 정보:\n{ctx}\n\n사용자 질문: {question.strip()}",
+            },
+        ],
+    }
+    data = _call_groq(payload, s.GROQ_API_KEY)
+    if not data:
+        return None
+    try:
+        content = data["choices"][0]["message"]["content"].strip()
+    except (KeyError, IndexError, TypeError):
+        return None
+    if len(content) > 320:
+        content = content[:318] + "…"
+    return content or None
+
+
+_REVIEW_SUMMARY_SYSTEM = """너는 한국 카카오맵 주차장 페이지의 후기/블로그
+스니펫을 받아서 사용자에게 주차 관련 핵심을 한 줄로 요약해준다.
+60자 이내 한국어 평서문. "주차장 협소", "발렛 가능", "출입 까다로움", "야간 만차"
+같이 의사결정에 도움될 한 문장만. 따옴표/이모지 X. 후기에 주차 관련 정보 없으면
+빈 문자열 반환.
+"""
+
+
+def summarize_reviews(snippets: list[str]) -> str | None:
+    if not is_enabled() or not snippets:
+        return None
+    joined = "\n---\n".join(s[:240] for s in snippets[:5])
+    s = get_settings()
+    payload = {
+        "model": _model_generate(),
+        "temperature": 0.3,
+        "max_tokens": 140,
+        "messages": [
+            {"role": "system", "content": _REVIEW_SUMMARY_SYSTEM},
+            {"role": "user", "content": joined},
+        ],
+    }
+    data = _call_groq(payload, s.GROQ_API_KEY)
+    if not data:
+        return None
+    try:
+        content = data["choices"][0]["message"]["content"].strip()
+    except (KeyError, IndexError, TypeError):
+        return None
+    content = content.split("\n")[0].strip().strip('"').strip("「").strip("」")
+    return content or None
 
 
 def cache_stats() -> dict:
@@ -410,7 +507,7 @@ def classify_self_parking_from_evidence(
     )
     s = get_settings()
     payload = {
-        "model": s.GROQ_MODEL,
+        "model": _model_classify(),
         "temperature": 0.0,
         "max_tokens": 220,
         "response_format": {"type": "json_object"},
@@ -495,7 +592,7 @@ def generate_summary(
 
     s = get_settings()
     payload = {
-        "model": s.GROQ_MODEL,
+        "model": _model_generate(),
         "temperature": 0.4,
         "max_tokens": 180,
         "messages": [
