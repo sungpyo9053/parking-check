@@ -9,10 +9,9 @@ import type {
 } from "../types/parking";
 import KakaoMap, { MapMarker } from "../components/KakaoMap";
 import AnalysisHeader from "../components/analysis/AnalysisHeader";
-import AnalysisBottomSheet, {
-  SheetState,
-} from "../components/analysis/AnalysisBottomSheet";
 import PlanACard from "../components/analysis/PlanACard";
+import NearbyTransitCard from "../components/analysis/NearbyTransitCard";
+import NearbyEvCard from "../components/analysis/NearbyEvCard";
 import PlanBPanel from "../components/analysis/PlanBPanel";
 import AlternativePlaceSection from "../components/analysis/AlternativePlaceSection";
 import VisitFeedbackCard from "../components/analysis/VisitFeedbackCard";
@@ -67,10 +66,7 @@ export default function AnalysisPage() {
   >(null);
   const [fav, setFav] = useState(false);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
-  // 기본은 half — expanded 로 시작하면 시트(z-40)가 토프바/반경칩(z-30/20)을
-  // 덮어 즐겨찾기★/뒤로/공유 버튼에 접근 불가가 됨. half 에서도 결과 카드들이
-  // 충분히 보이고, 더 보고 싶으면 핸들 한 번 탭이면 expanded 로 전환됨.
-  const [sheetState, setSheetState] = useState<SheetState>("half");
+  // (시트 폐기 — 사용자 피드백: 위 고정/아래 스크롤이 답답함. 페이지 전체 스크롤로 전환)
 
   useEffect(() => {
     if (!data) return;
@@ -528,12 +524,9 @@ export default function AnalysisPage() {
       )}
 
       {data && verdict && selfCopy && dest && parkingResult && (
-        <AnalysisBottomSheet
-          state={sheetState}
-          onChangeState={setSheetState}
-          peek={<ResultVerdictCard result={parkingResult} />}
-          body={
-            <>
+        <div className="analyze-result-stream">
+          <ResultVerdictCard result={parkingResult} />
+          <>
               {/* 상단 재검색 — 현재 장소명 수정 가능 */}
               <form
                 className="lh-hero-search result-top-search"
@@ -606,6 +599,12 @@ export default function AnalysisPage() {
                 </>
               )}
 
+              {/* 피드백 5: 전기차 충전소 */}
+              <NearbyEvCard destLat={dest.lat} destLng={dest.lng} />
+
+              {/* 피드백 6: 주변 정류장 — 대중교통 추천 보조 */}
+              <NearbyTransitCard destLat={dest.lat} destLng={dest.lng} />
+
               {/* 보조: 자체 주차 evidence + 사용자 피드백 */}
               <SelfParkingCard
                 data={data}
@@ -663,9 +662,8 @@ export default function AnalysisPage() {
                   </button>
                 </form>
               </div>
-            </>
-          }
-        />
+          </>
+        </div>
       )}
 
       {/* 공유 toast */}

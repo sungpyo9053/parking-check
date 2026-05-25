@@ -42,6 +42,21 @@ export default function RecommendedActionCard({
           "noopener,noreferrer",
         );
         return;
+      case "modu_parking":
+        // 카카오톡 공유 패턴과 동일하게 외부 앱/웹 열기
+        window.open(
+          "https://www.moduparking.com",
+          "_blank",
+          "noopener,noreferrer",
+        );
+        return;
+      case "modu_ev":
+        window.open(
+          "https://www.modu-ev.com",
+          "_blank",
+          "noopener,noreferrer",
+        );
+        return;
       case "search_other":
         navigate("/");
         return;

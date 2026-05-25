@@ -104,3 +104,32 @@ def search_parking_nearby(lat: float, lng: float, radius_m: int = 500, size: int
     if r.status_code != 200:
         raise KakaoAPIError(f"Kakao category search failed: {r.status_code} {r.text}")
     return r.json().get("documents", [])
+
+
+def search_category_nearby(
+    category_group_code: str,
+    lat: float,
+    lng: float,
+    radius_m: int = 800,
+    size: int = 10,
+) -> list[dict]:
+    """범용 카테고리 검색. SW8(지하철역), BUS(버스정류장 — kakao는 별도 카테고리 없음, 키워드로),
+    또는 키워드 검색을 직접 쓰는 게 더 정확한 카테고리도 있음."""
+    radius_m = max(1, min(20000, radius_m))
+    params = {
+        "category_group_code": category_group_code,
+        "x": str(lng),
+        "y": str(lat),
+        "radius": radius_m,
+        "size": size,
+        "sort": "distance",
+    }
+    with httpx.Client(timeout=5.0) as client:
+        r = client.get(
+            f"{KAKAO_BASE}/search/category.json", headers=_headers(), params=params
+        )
+    if r.status_code != 200:
+        raise KakaoAPIError(
+            f"Kakao category search ({category_group_code}) failed: {r.status_code} {r.text}"
+        )
+    return r.json().get("documents", [])

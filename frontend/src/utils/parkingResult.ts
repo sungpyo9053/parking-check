@@ -314,6 +314,18 @@ function buildActions(visit: VisitRecommendation, usableNear: number): Recommend
   }
 
   actions.push({
+    id: "modu_parking",
+    icon: "📲",
+    label: "모두의주차장 앱",
+    sub: "실시간 자리·예약 가능 여부 확인",
+  });
+  actions.push({
+    id: "modu_ev",
+    icon: "⚡",
+    label: "모두의전기차 앱",
+    sub: "EV 충전소 실시간 가용·결제",
+  });
+  actions.push({
     id: "search_other",
     icon: "🔎",
     label: "다른 장소 검색",

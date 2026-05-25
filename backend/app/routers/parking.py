@@ -463,6 +463,57 @@ def analyze(
     return response
 
 
+@router.get("/nearby-pois")
+def nearby_pois(
+    lat: float = Query(...),
+    lng: float = Query(...),
+    category: str = Query(..., description="ev | subway | bus"),
+    radius_m: int = Query(800, ge=100, le=3000),
+):
+    """목적지 주변 EV 충전소 / 지하철역 / 버스정류장 검색.
+    피드백 6/5: 대중교통 정류장 + 전기차 충전소 노출."""
+    from ..services import kakao as kakao_svc
+
+    try:
+        if category == "ev":
+            docs = kakao_svc.search_keyword_near(
+                "전기차충전소", lat=lat, lng=lng, radius_m=radius_m, size=12
+            )
+        elif category == "subway":
+            docs = kakao_svc.search_category_nearby(
+                "SW8", lat, lng, radius_m=radius_m, size=8
+            )
+        elif category == "bus":
+            docs = kakao_svc.search_keyword_near(
+                "버스정류장", lat=lat, lng=lng, radius_m=radius_m, size=10
+            )
+        else:
+            raise HTTPException(status_code=400, detail="category must be ev|subway|bus")
+    except kakao_svc.KakaoAPIError as e:
+        import logging
+
+        logging.getLogger(__name__).warning("nearby_pois kakao fail: %s", e)
+        return {"items": []}
+
+    items = []
+    for d in docs:
+        try:
+            items.append({
+                "name": d.get("place_name"),
+                "address": d.get("address_name"),
+                "road_address": d.get("road_address_name"),
+                "category": d.get("category_name"),
+                "lat": float(d["y"]),
+                "lng": float(d["x"]),
+                "distance_m": int(d["distance"]) if d.get("distance") else None,
+                "url": d.get("place_url"),
+                "phone": d.get("phone") or None,
+            })
+        except (KeyError, ValueError, TypeError):
+            continue
+    return {"items": items}
+
+
 @router.get("/kakao-detail", response_model=KakaoPlaceDetail | None)
 def kakao_detail(
     kakao_place_id: Optional[str] = Query(

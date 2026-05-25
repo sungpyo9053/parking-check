@@ -222,6 +222,18 @@ export type Visit = {
   updated_at: string | null;
 };
 
+export type NearbyPoi = {
+  name: string;
+  address: string | null;
+  road_address: string | null;
+  category: string | null;
+  lat: number;
+  lng: number;
+  distance_m: number | null;
+  url: string | null;
+  phone: string | null;
+};
+
 export type KakaoPlaceDetail = {
   place_id: string;
   open_status: string | null;
@@ -245,6 +257,18 @@ export const api = {
     request<KakaoPlaceDetail | null>(
       `/api/parking/kakao-detail?kakao_place_id=${encodeURIComponent(kakaoPlaceId)}`,
     ),
+
+  nearbyPois: (params: { lat: number; lng: number; category: "ev" | "subway" | "bus"; radius_m?: number }) => {
+    const q = new URLSearchParams({
+      lat: String(params.lat),
+      lng: String(params.lng),
+      category: params.category,
+    });
+    if (params.radius_m) q.set("radius_m", String(params.radius_m));
+    return request<{ items: NearbyPoi[] }>(
+      `/api/parking/nearby-pois?${q.toString()}`,
+    );
+  },
 
   analyze: (params: {
     place_id?: number;
