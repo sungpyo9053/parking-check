@@ -256,9 +256,11 @@ export type KakaoPlaceDetail = {
 
 export const api = {
   searchPlaces: (query: string, size = 10) =>
-    request<{ items: PlaceItem[] }>(
-      `/api/places/search?query=${encodeURIComponent(query)}&size=${size}`,
-    ),
+    request<{
+      items: PlaceItem[];
+      ai_best_index: number | null;
+      ai_reason: string | null;
+    }>(`/api/places/search?query=${encodeURIComponent(query)}&size=${size}`),
 
   kakaoDetail: (kakaoPlaceId: string) =>
     request<KakaoPlaceDetail | null>(

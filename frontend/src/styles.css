@@ -913,6 +913,104 @@ button {
   font-size: 13px;
   color: #1e40af;
 }
+/* ParkingCandidateCard detail expand — 카카오 detail lazy fetch */
+.pcard-detail-exp {
+  margin-top: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-soft);
+  padding: 0;
+}
+.pcard-detail-exp summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-primary-strong);
+  letter-spacing: -0.01em;
+}
+.pcard-detail-exp summary::-webkit-details-marker { display: none; }
+.pcard-detail-exp summary::before {
+  content: "▸ ";
+  font-size: 11px;
+}
+.pcard-detail-exp[open] summary::before { content: "▾ "; }
+.pcard-detail-body {
+  padding: 6px 12px 12px;
+}
+.pcard-detail-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pcard-detail-skel-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.pcard-detail-empty {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.55;
+  background: #fff;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.pcard-detail-empty strong {
+  color: var(--color-text-primary);
+}
+.pcard-detail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pcard-detail-list li {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  font-size: 13px;
+}
+.pcard-detail-key {
+  flex: 0 0 60px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+.pcard-detail-val {
+  flex: 1;
+  font-weight: 600;
+}
+
+/* PlaceSelectPage AI 추천 핀 */
+.list-item-ai {
+  border: 1.5px solid #8b5cf6 !important;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.06) 0%, rgba(99, 102, 241, 0.06) 100%);
+  position: relative;
+}
+.list-item-ai-badge {
+  position: absolute;
+  top: -8px;
+  left: 12px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 999px;
+  letter-spacing: -0.01em;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.32);
+}
+.list-item-ai-reason {
+  margin-top: 4px;
+  font-size: 11px;
+  font-style: italic;
+  color: #6d28d9;
+}
+
 /* AI 의견 노트 — PlanA 카드 안의 짧은 LLM reason */
 .top-rec-ai-note {
   margin-top: 10px;

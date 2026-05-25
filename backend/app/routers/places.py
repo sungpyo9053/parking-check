@@ -86,7 +86,34 @@ def places_search(
         )
 
     db.commit()
-    return PlaceSearchResponse(items=items)
+
+    # Groq 의도 추천 — 후보가 2개 이상일 때 LLM 이 사용자 의도와 가장 맞는 1개 선정
+    ai_best_index: int | None = None
+    ai_reason: str | None = None
+    try:
+        if len(items) >= 2:
+            from ..services import llm_parking_verifier as llm_v
+
+            res = llm_v.pick_search_intent(
+                query,
+                [
+                    {
+                        "name": it.name,
+                        "category": it.category,
+                        "road_address": it.road_address,
+                        "address": it.address,
+                    }
+                    for it in items
+                ],
+            )
+            if res and res.get("best_index", -1) >= 0:
+                ai_best_index = res["best_index"]
+                ai_reason = res["reason"]
+    except Exception as e:  # noqa: BLE001
+        import logging as _lg
+        _lg.getLogger(__name__).warning("search intent failed: %s", e)
+
+    return PlaceSearchResponse(items=items, ai_best_index=ai_best_index, ai_reason=ai_reason)
 
 
 # --- 자체 주차 사용자 피드백 ---

@@ -230,6 +230,133 @@ def verify_batch(items: list[dict]) -> list[VerifierResult | None]:
     return results
 
 
+_INTENT_CACHE: TTLCache[str, dict] = TTLCache(max_size=512, ttl_seconds=24 * 3600)
+_REASONS_CACHE: TTLCache[str, str] = TTLCache(max_size=512, ttl_seconds=6 * 3600)
+_SHARE_CACHE: TTLCache[str, str] = TTLCache(max_size=512, ttl_seconds=24 * 3600)
+
+
+_INTENT_SYSTEM = """너는 사용자 검색어와 카카오 장소 후보 목록을 받고, 사용자가
+실제로 찾고 있을 가능성이 가장 높은 후보를 한 개 고르는 분류기다.
+다음 JSON 으로만 답한다:
+
+{"best_index": <number>, "reason": "한 줄 한국어 이유"}
+
+기준:
+- 사용자 검색어가 줄임말/오타인 경우 정식 명칭으로 매핑 (예: "스벅"→스타벅스)
+- 동일 이름이 여러 개 있으면(예: 역 호선 차이) 일반적으로 가장 통용되는 것 선택
+  - "강남역" 단독 → 2호선이 가장 일반
+  - "선릉역" 단독 → 2호선
+- 매장명 + 지역명 조합이면 그 지역의 매장 우선 (예: "더홈 안양" → 안양 매장)
+- 검색어와 무관한 후보는 절대 선택하지 마라. 분명히 매칭되는 것 없으면 best_index=-1
+"""
+
+
+def pick_search_intent(query: str, candidates: list[dict]) -> dict | None:
+    """카카오 검색 결과 중 사용자 의도에 가장 가까운 후보 1개 선정.
+    candidates: [{name, category, road_address|address}, ...]
+    리턴: {"best_index": int, "reason": str} 또는 None.
+    """
+    if not is_enabled() or not query.strip() or not candidates:
+        return None
+    # 캐시 키
+    sig = f"{query}|{len(candidates)}|" + "|".join(
+        (c.get("name") or "")[:20] for c in candidates[:6]
+    )
+    cached = _INTENT_CACHE.get(sig)
+    if cached is not None:
+        return cached
+
+    cand_text = "\n".join(
+        f"[{i}] {c.get('name','')} | {c.get('category','') or ''} | {c.get('road_address') or c.get('address') or ''}"
+        for i, c in enumerate(candidates[:10])
+    )
+    user_msg = f"검색어: {query}\n\n후보:\n{cand_text}"
+    s = get_settings()
+    payload = {
+        "model": s.GROQ_MODEL,
+        "temperature": 0.0,
+        "max_tokens": 160,
+        "response_format": {"type": "json_object"},
+        "messages": [
+            {"role": "system", "content": _INTENT_SYSTEM},
+            {"role": "user", "content": user_msg},
+        ],
+    }
+    data = _call_groq(payload, s.GROQ_API_KEY)
+    if not data:
+        return None
+    try:
+        content = data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError):
+        return None
+    import json as _json
+
+    s_str = content.strip()
+    if s_str.startswith("```"):
+        s_str = s_str.strip("`")
+        if s_str.lower().startswith("json"):
+            s_str = s_str[4:].lstrip()
+    a = s_str.find("{")
+    b = s_str.rfind("}")
+    if a == -1 or b == -1:
+        return None
+    try:
+        obj = _json.loads(s_str[a : b + 1])
+    except _json.JSONDecodeError:
+        return None
+    idx = obj.get("best_index")
+    if not isinstance(idx, int) or idx < -1 or idx >= len(candidates):
+        return None
+    result = {"best_index": idx, "reason": str(obj.get("reason") or "")[:140]}
+    _INTENT_CACHE.set(sig, result)
+    return result
+
+
+def generate_share_text(place_name: str, visit_label: str, score: int) -> str | None:
+    """공유용 한 줄 카피 동적 생성."""
+    if not is_enabled():
+        return None
+    key = f"{place_name}|{visit_label}|{score}"
+    cached = _SHARE_CACHE.get(key)
+    if cached is not None:
+        return cached
+    s = get_settings()
+    user_msg = (
+        f"장소: {place_name}\n차량 방문 판단: {visit_label}\n주차 가능성 점수: {score}/100\n\n"
+        "카카오톡/SNS 공유용 한국어 한 줄 카피 (60자 이내, 따옴표/이모지 X)."
+    )
+    payload = {
+        "model": s.GROQ_MODEL,
+        "temperature": 0.5,
+        "max_tokens": 140,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "너는 한국 사용자에게 공유될 한 줄 카피를 만든다. '주차 가능' 단정 X, "
+                    "'주차 가능성' / '주차 난이도' / '방문 전 확인' 표현 사용. 한 줄만, "
+                    "60자 이내, 자연스럽게."
+                ),
+            },
+            {"role": "user", "content": user_msg},
+        ],
+    }
+    data = _call_groq(payload, s.GROQ_API_KEY)
+    if not data:
+        return None
+    try:
+        content = data["choices"][0]["message"]["content"].strip()
+    except (KeyError, IndexError, TypeError):
+        return None
+    content = content.split("\n")[0].strip().strip('"').strip("「").strip("」")
+    if len(content) > 90:
+        content = content[:88] + "…"
+    if not content:
+        return None
+    _SHARE_CACHE.set(key, content)
+    return content
+
+
 def cache_stats() -> dict:
     return {"hit": _CACHE.stats(), "neg": _NEGATIVE_CACHE.stats()}
 

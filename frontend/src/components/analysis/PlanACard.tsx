@@ -166,7 +166,11 @@ export default function PlanACard({ data, destName }: Props) {
           )}
           {detail === null && (
             <div className="top-rec-detail-empty">
-              요금/시간 정보가 등록되지 않은 주차장입니다.
+              카카오맵에 이 주차장은 있지만,{" "}
+              <strong>운영자가 요금·운영시간을 입력하지 않았어요.</strong>
+              <br />
+              보통 사설 소형 주차장이나 노상공영주차장 일부에서 발생합니다.
+              방문 전 입구 안내판이나 매장 문의가 필요합니다.
             </div>
           )}
           {detail && (

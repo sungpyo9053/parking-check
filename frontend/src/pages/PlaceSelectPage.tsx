@@ -11,14 +11,24 @@ export default function PlaceSelectPage() {
 
   const [items, setItems] = useState<PlaceItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [aiBestIdx, setAiBestIdx] = useState<number | null>(null);
+  const [aiReason, setAiReason] = useState<string | null>(null);
 
   useEffect(() => {
     if (!q) return;
     setError(null);
     setItems(null);
+    setAiBestIdx(null);
+    setAiReason(null);
     api
       .searchPlaces(q)
-      .then((res) => setItems(res.items))
+      .then((res) => {
+        setItems(res.items);
+        if (res.ai_best_index != null && res.ai_best_index >= 0) {
+          setAiBestIdx(res.ai_best_index);
+          setAiReason(res.ai_reason);
+        }
+      })
       .catch((e) => setError(e.message));
   }, [q]);
 
@@ -53,17 +63,28 @@ export default function PlaceSelectPage() {
       )}
 
       <ul className="list">
-        {items?.map((p) => (
-          <li
-            key={`${p.external_id}-${p.name}`}
-            className="list-item clickable"
-            onClick={() => choose(p)}
-          >
-            <span className="title">{p.name}</span>
-            <span className="sub">{p.road_address || p.address}</span>
-            {p.category && <span className="sub">{p.category}</span>}
-          </li>
-        ))}
+        {items?.map((p, i) => {
+          const isAi = aiBestIdx === i;
+          return (
+            <li
+              key={`${p.external_id}-${p.name}`}
+              className={`list-item clickable${isAi ? " list-item-ai" : ""}`}
+              onClick={() => choose(p)}
+            >
+              {isAi && (
+                <span className="list-item-ai-badge" title={aiReason ?? ""}>
+                  🤖 AI 추천
+                </span>
+              )}
+              <span className="title">{p.name}</span>
+              <span className="sub">{p.road_address || p.address}</span>
+              {p.category && <span className="sub">{p.category}</span>}
+              {isAi && aiReason && (
+                <span className="list-item-ai-reason">{aiReason}</span>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
