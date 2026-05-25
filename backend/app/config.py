@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     # 발급: https://console.anthropic.com → API Keys
     ANTHROPIC_API_KEY: str = ""
 
+    # Groq API — 1순위 추천 주차장의 일반 개방 여부 LLM 검증 (피드백 거위 버그
+    # 방지). OpenAI 호환 API, 빠른 inference. 없으면 graceful skip.
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.1-8b-instant"
+    LLM_VERIFY_ENABLED: bool = True
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]

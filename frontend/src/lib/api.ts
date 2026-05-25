@@ -162,6 +162,12 @@ export type ExternalCandidate = {
   usability: UsabilityTier;
   usability_label: string;
   usability_reasons: string[];
+  /** LLM 검증 — open_to_public(일반 개방) / restricted(외부 불가) / uncertain */
+  llm_verdict?: "open_to_public" | "restricted" | "uncertain" | null;
+  llm_reason?: string | null;
+  llm_confidence?: "high" | "medium" | "low" | null;
+  /** AI 도 추천 (open_to_public + 신뢰도 high/medium) → 카드에 ⭐AI 배지 */
+  llm_recommended?: boolean;
 };
 
 export type SelfParkingFeedbackStats = {

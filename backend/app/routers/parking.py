@@ -369,7 +369,84 @@ def analyze(
     # 만약을 위한 백업 + 지도에 ⭐ 마커로 시각 표시. 자체 주차 카드와 시각 충돌은
     # frontend 에서 카드 노출 분기로 해결.
     top_rec: TopRecommendation | None = None
+
+    # LLM 검증 (Groq) — 모든 외부 후보를 병렬로 검증해서 순위 조절 + 실제 가능
+    # 여부 체크. 룰베이스 classifier 놓친 케이스 차단 (피드백: 거위 버그).
+    # 캐시 hit 시 0ms, miss 면 동시 6 worker 로 보통 1~3초.
+    try:
+        from ..services import llm_parking_verifier as llm_v
+
+        if llm_v.is_enabled() and external_candidates:
+            batch_input = [
+                {
+                    "name": c.name,
+                    "category": c.category,
+                    "address": c.address or c.road_address,
+                    "destination_name": dest_name,
+                }
+                for c in external_candidates
+            ]
+            llm_results = llm_v.verify_batch(batch_input)
+            import logging as _lg
+            _llog = _lg.getLogger(__name__)
+            verified = 0
+            promoted = 0
+            demoted = 0
+            blocked = 0
+            for cand, res in zip(external_candidates, llm_results):
+                if res is None:
+                    continue
+                verified += 1
+                # LLM 결과 후보에 저장 (사용자 화면에 노출)
+                cand.llm_verdict = res.verdict  # type: ignore[assignment]
+                cand.llm_reason = res.reason
+                cand.llm_confidence = res.confidence  # type: ignore[assignment]
+                cand.usability_reasons = list(cand.usability_reasons or []) + [
+                    f"LLM: {res.reason}"
+                ]
+                if res.verdict == "restricted":
+                    cand.usability = "private_restricted"  # type: ignore[assignment]
+                    cand.usability_label = "추천 제외 (LLM 검증)"
+                    blocked += 1
+                elif res.verdict == "uncertain":
+                    if cand.usability == "usable":
+                        cand.usability = "caution"  # type: ignore[assignment]
+                        cand.usability_label = "확인 필요 (LLM 모호)"
+                        demoted += 1
+                elif res.verdict == "open_to_public":
+                    # LLM 이 일반 개방 확신 → AI 추천 라벨 + 점수 승격
+                    if res.confidence in ("high", "medium"):
+                        cand.llm_recommended = True  # ⭐AI 배지
+                    if cand.usability == "caution" and res.confidence in ("high", "medium"):
+                        cand.usability = "usable"  # type: ignore[assignment]
+                        cand.usability_label = "추천 가능 (LLM 검증)"
+                        promoted += 1
+            _llog.info(
+                "LLM verify: total=%d verified=%d blocked=%d demoted=%d promoted=%d",
+                len(external_candidates), verified, blocked, demoted, promoted,
+            )
+
+            # LLM 결과 반영 후 fallback.shown/excluded 재분류 — 사용자 화면에서
+            # restricted 된 후보가 표시되지 않도록.
+            new_shown: list[ExternalCandidate] = []
+            new_excluded: list[ExternalCandidate] = list(fallback.excluded_items or [])
+            for c in external_candidates:
+                if c.usability == "private_restricted":
+                    new_excluded.append(c)
+                else:
+                    new_shown.append(c)
+            fallback.evidence_items = new_shown
+            fallback.excluded_items = new_excluded
+            fallback.usable_count = sum(1 for c in new_shown if c.usability == "usable")
+            fallback.caution_count = sum(1 for c in new_shown if c.usability == "caution")
+            fallback.excluded_count = len(new_excluded)
+            external_candidates = new_shown
+    except Exception as e:  # noqa: BLE001
+        import logging as _lg
+        _lg.getLogger(__name__).warning("LLM batch verify failed: %s", e)
+
     top_cand, top_score, top_reasons = pick_top_external(external_candidates)
+
     if top_cand is not None:
         walk = top_cand.walking_minutes
         dist = top_cand.walking_route_distance_m or top_cand.distance_m

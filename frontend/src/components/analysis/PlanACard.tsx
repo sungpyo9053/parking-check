@@ -109,6 +109,14 @@ export default function PlanACard({ data, destName }: Props) {
     <div className="top-rec-card">
       <div className="top-rec-badge-row">
         <span className="top-rec-badge">⭐ 1순위 추천</span>
+        {c.llm_recommended && (
+          <span
+            className="top-rec-badge-ai"
+            title={c.llm_reason || "AI도 일반 개방 주차장으로 판단했어요"}
+          >
+            🤖 AI 추천
+          </span>
+        )}
       </div>
       <div className="top-rec-headline">
         {c.walking_minutes != null ? (

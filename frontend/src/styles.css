@@ -913,6 +913,20 @@ button {
   font-size: 13px;
   color: #1e40af;
 }
+/* AI 추천 배지 — Groq LLM 검증에서 일반 개방 강하게 판단한 후보 */
+.top-rec-badge-ai {
+  display: inline-block;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-left: 6px;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.32);
+}
+
 /* 카카오 상세 정보 — 우리 카드 디자인으로 요금/시간/면수/결제 깔끔히 표시. */
 .top-rec-detail {
   margin-top: var(--space-3);

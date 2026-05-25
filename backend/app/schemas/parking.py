@@ -149,6 +149,11 @@ class ExternalCandidate(BaseModel):
     usability: UsabilityTier = "usable"
     usability_label: str = "추천 가능"
     usability_reasons: list[str] = []
+    # LLM 검증 결과 (Groq) — 사용자에게 "AI 추천" 배지/근거 표시용
+    llm_verdict: Literal["open_to_public", "restricted", "uncertain"] | None = None
+    llm_reason: str | None = None
+    llm_confidence: Literal["high", "medium", "low"] | None = None
+    llm_recommended: bool = False  # AI도 추천 (open_to_public + high/medium) → 카드에 ⭐AI 배지
 
 
 class FallbackInfo(BaseModel):
