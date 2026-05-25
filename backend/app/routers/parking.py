@@ -377,6 +377,13 @@ def analyze(
         from ..services import llm_parking_verifier as llm_v
 
         if llm_v.is_enabled() and external_candidates:
+            # TPM 한도 보호 — 거리 가까운 8건만 LLM 검증 (1순위 + 주변 핵심 후보)
+            sorted_by_dist = sorted(
+                enumerate(external_candidates),
+                key=lambda x: x[1].distance_m if x[1].distance_m is not None else 99999,
+            )
+            target_indices = [i for i, _ in sorted_by_dist[:8]]
+            target_set = set(target_indices)
             batch_input = [
                 {
                     "name": c.name,
@@ -384,9 +391,14 @@ def analyze(
                     "address": c.address or c.road_address,
                     "destination_name": dest_name,
                 }
-                for c in external_candidates
+                for i, c in enumerate(external_candidates)
+                if i in target_set
             ]
-            llm_results = llm_v.verify_batch(batch_input)
+            llm_subset_results = llm_v.verify_batch(batch_input)
+            # 원본 index 순서로 펼침
+            llm_results: list = [None] * len(external_candidates)
+            for k, orig_i in enumerate(target_indices):
+                llm_results[orig_i] = llm_subset_results[k]
             import logging as _lg
             _llog = _lg.getLogger(__name__)
             verified = 0

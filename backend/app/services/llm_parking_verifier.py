@@ -174,7 +174,7 @@ def verify(
     payload = {
         "model": s.GROQ_MODEL,
         "temperature": 0.0,
-        "max_tokens": 200,
+        "max_tokens": 100,
         "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": _SYSTEM_PROMPT},
@@ -210,7 +210,9 @@ def verify_batch(items: list[dict]) -> list[VerifierResult | None]:
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     results: list[VerifierResult | None] = [None] * len(items)
-    with ThreadPoolExecutor(max_workers=6) as pool:
+    # Groq 무료 TPM 6000 보호 — 동시 worker 3, 최대 8건만 (그 이상은 cache 일치 시
+    # 다음 분석에서 자연 보강됨)
+    with ThreadPoolExecutor(max_workers=3) as pool:
         futures = {}
         for i, it in enumerate(items):
             f = pool.submit(

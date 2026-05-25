@@ -169,6 +169,10 @@ def score_db_candidate(c: Candidate) -> tuple[float, list[str]]:
     return round(score, 1), reasons
 
 
+MAX_TOP_WALK_MIN = 15  # 1순위 추천 최대 도보 분 — 그 이상은 차량 방문 의미 적음
+MAX_TOP_DISTANCE_M = 1200  # 도보 분 미상 시 거리 cap
+
+
 def pick_top_external(
     candidates: list[ExternalCandidate],
 ) -> tuple[ExternalCandidate | None, float, list[str]]:
@@ -182,11 +186,24 @@ def pick_top_external(
     버그 차단. usable 이 0 개일 때만 caution 도 후보로 허용 (사용자에게 "확인 필요"
     라벨로 표시됨).
     """
-    pool_usable = [c for c in candidates if c.usability == "usable"]
+    # 거리 cap — 도보 15분(약 1.2km) 초과 후보는 1순위에서 제외 (의미 없음)
+    def _within_cap(c: ExternalCandidate) -> bool:
+        if c.walking_minutes is not None:
+            return c.walking_minutes <= MAX_TOP_WALK_MIN
+        if c.distance_m is not None:
+            return c.distance_m <= MAX_TOP_DISTANCE_M
+        return False  # 거리 정보 없으면 1순위 후보로 부적합
+
+    pool_usable = [
+        c for c in candidates if c.usability == "usable" and _within_cap(c)
+    ]
     if pool_usable:
         pool = pool_usable
     else:
-        pool = [c for c in candidates if c.usability != "private_restricted"]
+        pool = [
+            c for c in candidates
+            if c.usability != "private_restricted" and _within_cap(c)
+        ]
 
     best: tuple[float, int, ExternalCandidate, list[str]] | None = None
     for c in pool:
