@@ -1004,6 +1004,136 @@ button {
   color: var(--color-text-muted);
 }
 
+/* 차량 vs 대중교통 비교 카드 (차별점) */
+.vs-card { border-left: 3px solid var(--color-primary); }
+.vs-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  align-items: stretch;
+}
+.vs-col {
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px 10px;
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.vs-tone-good { border-color: var(--color-verdict-available); }
+.vs-tone-caution { border-color: var(--color-verdict-uncertain); }
+.vs-tone-tough { border-color: var(--color-verdict-unavailable); }
+.vs-tone-unknown { border-color: var(--color-border-strong); }
+.vs-col-head {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+.vs-col-verdict {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+}
+.vs-tone-good .vs-col-verdict { color: var(--color-verdict-available); }
+.vs-tone-caution .vs-col-verdict { color: var(--color-verdict-uncertain); }
+.vs-tone-tough .vs-col-verdict { color: var(--color-verdict-unavailable); }
+.vs-col-detail {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+.vs-divider {
+  align-self: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--color-text-muted);
+  padding: 0 4px;
+}
+
+/* Home USP 섹션 (차별점 강조) */
+.home-usp {
+  padding: 32px 20px;
+  background: var(--color-bg-soft);
+}
+.home-usp-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+.home-usp-header {
+  text-align: center;
+  margin-bottom: 18px;
+}
+.home-usp-eyebrow {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--color-primary-strong);
+  background: var(--color-primary-soft);
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
+}
+.home-usp-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.35;
+  margin: 0;
+  color: var(--color-text-primary);
+}
+.home-usp-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+.home-usp-card {
+  display: block;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 16px;
+  text-decoration: none;
+  color: var(--color-text-primary);
+  transition: transform 120ms ease-out, border-color 120ms ease-out, box-shadow 120ms ease-out;
+}
+.home-usp-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-primary);
+  box-shadow: 0 6px 18px rgba(31, 41, 55, 0.08);
+}
+.home-usp-card-title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+.home-usp-card-sub {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.home-usp-card-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-primary-strong);
+  background: var(--color-primary-soft);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+@media (min-width: 720px) {
+  .home-usp-cards {
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .home-usp-title { font-size: 24px; }
+}
+
 /* Ask AI 카드 */
 .ask-card { background: #f7faff; border-color: #d9e6ff; }
 .ask-suggestions {

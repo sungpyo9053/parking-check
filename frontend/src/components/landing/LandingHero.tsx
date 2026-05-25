@@ -36,9 +36,9 @@ export default function LandingHero({ query, onQueryChange, onSubmit }: Props) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.12 }}
         >
-          맛집·카페·관광지 가기 전 <strong>주차 가능성</strong>을 먼저 확인하세요.
+          주차장 찾기 앱이 아닙니다. <strong>차 가져갈지 결정</strong>을 도와드려요.
           <br className="lh-br-desktop" />
-          공영주차장, 자체 주차장, 도보 거리까지 한 번에.
+          매장 자체 주차 · 주변 주차장 · 대중교통 대안 한 번에.
         </motion.p>
 
         <motion.form

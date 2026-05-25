@@ -28,6 +28,7 @@ import ResultVerdictCard from "../components/analysis/ResultVerdictCard";
 import JudgmentReasonCard from "../components/analysis/JudgmentReasonCard";
 import RecommendedActionCard from "../components/analysis/RecommendedActionCard";
 import AskAiCard from "../components/analysis/AskAiCard";
+import VehicleVsTransitCard from "../components/analysis/VehicleVsTransitCard";
 import { applySeo } from "../lib/seo";
 import { buildParkingResult } from "../utils/parkingResult";
 
@@ -553,16 +554,34 @@ export default function AnalysisPage() {
                 </button>
               </form>
 
-              {/* 판단 근거 */}
-              <JudgmentReasonCard result={parkingResult} />
+              {/* 차별점 1: 차량 vs 대중교통 비교 (모두의주차장 없음) */}
+              <VehicleVsTransitCard
+                result={parkingResult}
+                destLat={dest.lat}
+                destLng={dest.lng}
+                topWalkMin={data.top_recommendation?.candidate.walking_minutes ?? null}
+              />
 
-              {/* AI 자유 질문 — Groq Q&A */}
+              {/* 차별점 2: 자체 주차 추정 — 매장 자체 주차장 가능성 (모두의주차장 없음) */}
+              <SelfParkingCard
+                data={data}
+                copy={selfCopy}
+                feedbackBusy={feedbackBusy}
+                feedbackStats={feedbackStats}
+                feedbackJustSent={feedbackJustSent}
+                onFeedback={sendFeedback}
+              />
+
+              {/* 차별점 3: AI 자유 질문 — Groq Q&A (모두의주차장 없음) */}
               <AskAiCard
                 placeName={parkingResult.placeName}
                 result={parkingResult}
                 topRecName={data.top_recommendation?.candidate.name ?? null}
                 topWalkMin={data.top_recommendation?.candidate.walking_minutes ?? null}
               />
+
+              {/* 판단 근거 */}
+              <JudgmentReasonCard result={parkingResult} />
 
               {/* 추천 행동 (결론 → 근거 → 행동 순서) */}
               <RecommendedActionCard
@@ -614,15 +633,7 @@ export default function AnalysisPage() {
               {/* 피드백 6: 주변 정류장 — 대중교통 추천 보조 */}
               <NearbyTransitCard destLat={dest.lat} destLng={dest.lng} />
 
-              {/* 보조: 자체 주차 evidence + 사용자 피드백 */}
-              <SelfParkingCard
-                data={data}
-                copy={selfCopy}
-                feedbackBusy={feedbackBusy}
-                feedbackStats={feedbackStats}
-                feedbackJustSent={feedbackJustSent}
-                onFeedback={sendFeedback}
-              />
+              {/* 보조: 사용자 피드백 */}
               <VisitFeedbackCard
                 placeId={data.destination.place_id ?? null}
                 feedbackBusy={feedbackBusy}

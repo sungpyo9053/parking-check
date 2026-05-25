@@ -175,6 +175,34 @@ export default function HomePage() {
       <LandingHeader onSearchClick={focusSearch} />
       <LandingHero query={q} onQueryChange={setQ} onSubmit={submit} />
 
+      {/* 차별점 강조 — 모두의주차장이 못 하는 우리만의 두 가지 진입점 */}
+      <section className="home-usp">
+        <div className="home-usp-inner">
+          <div className="home-usp-header">
+            <div className="home-usp-eyebrow">우리만의 기능</div>
+            <h2 className="home-usp-title">
+              주차장 찾기가 아니라, 차 가져갈지 결정하는 서비스
+            </h2>
+          </div>
+          <div className="home-usp-cards">
+            <Link to="/judge" className="home-usp-card">
+              <div className="home-usp-card-title">약속 장소 심판</div>
+              <div className="home-usp-card-sub">
+                후보 2~5곳 비교 → 차량 방문 가장 안전한 1곳 선정
+              </div>
+              <div className="home-usp-card-tag">다른 주차 앱에는 없는 기능</div>
+            </Link>
+            <Link to="/basecamp" className="home-usp-card">
+              <div className="home-usp-card-title">베이스캠프 모드</div>
+              <div className="home-usp-card-sub">
+                차 한 번 대고 도보로 동선 짜기 — 여러 장소 하루 코스
+              </div>
+              <div className="home-usp-card-tag">여행/약속 코스용</div>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <div id="section-problem">
         <LandingProblem />
       </div>
