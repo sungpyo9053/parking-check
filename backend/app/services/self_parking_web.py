@@ -559,6 +559,45 @@ def enrich_self_parking(
     # LLM 자연어 요약 (ANTHROPIC_API_KEY 있을 때만, evidence 1건 이상)
     summary_natural = llm_summary.summarize(dest_name, evidences) if evidences else None
 
+    # Groq LLM evidence 분류 — 룰 기반과 다르면 보수적으로 보강
+    try:
+        from . import llm_parking_verifier as llm_v
+
+        if llm_v.is_enabled() and evidences:
+            snippets = [(e.snippet or "") for e in evidences if (e.snippet or "").strip()][:6]
+            if snippets:
+                llm_self = llm_v.classify_self_parking_from_evidence(
+                    dest_name=dest_name or "",
+                    dest_addr=dest_addr,
+                    evidence_snippets=snippets,
+                )
+                if llm_self and llm_self.confidence in ("high", "medium"):
+                    if llm_self.verdict == "available" and final_status not in (
+                        "available", "likely"
+                    ):
+                        final_status = "likely"
+                        final_confidence = max(int(final_confidence), 80)
+                        final_reason = f"AI evidence 분류: {llm_self.reason}"
+                    elif llm_self.verdict == "unavailable" and final_status != "unavailable":
+                        # 룰 기반이 likely 라도 LLM 이 명확히 없다고 하면 강등
+                        if llm_self.confidence == "high" or final_status in (
+                            "unknown", "uncertain"
+                        ):
+                            final_status = "unavailable"
+                            final_confidence = max(int(final_confidence), 70)
+                            final_reason = f"AI evidence 분류: {llm_self.reason}"
+                    elif llm_self.verdict == "uncertain" and final_status == "likely":
+                        # 룰 기반 likely + LLM uncertain → uncertain 으로 강등
+                        if llm_self.confidence == "high":
+                            final_status = "uncertain"
+                            final_confidence = min(int(final_confidence), 55)
+                            final_reason = (
+                                f"AI evidence 분류 (모호): {llm_self.reason}"
+                            )
+    except Exception as e:  # noqa: BLE001
+        import logging as _lg
+        _lg.getLogger(__name__).warning("LLM self_parking classify failed: %s", e)
+
     return SelfParking(
         status=final_status,  # type: ignore[arg-type]
         confidence=int(final_confidence),

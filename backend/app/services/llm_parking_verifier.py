@@ -235,6 +235,94 @@ def cache_stats() -> dict:
 
 
 _SUMMARY_CACHE: TTLCache[str, str] = TTLCache(max_size=512, ttl_seconds=6 * 3600)
+_SELF_CACHE: TTLCache[str, "VerifierResult"] = TTLCache(max_size=512, ttl_seconds=24 * 3600)
+
+
+_SELF_SYSTEM = """너는 한국 매장의 '자체 주차장' 가능 여부를 블로그/리뷰 snippet
+으로부터 판단하는 분류기다. 다음 JSON 으로만 답한다:
+
+{"verdict": "available" | "unavailable" | "uncertain", "reason": "한 줄 한국어 근거 인용 또는 요약", "confidence": "high" | "medium" | "low"}
+
+기준:
+- "available": snippet 에 "전용주차장 있어요", "주차장 ○대", "지하주차 가능" 등 매장
+  자체 주차 명확히 가능 표현이 있는 경우. confidence high.
+- "unavailable": "주차장 없음", "근처 공영주차장 이용", "주차 어려워요" 등
+  매장 자체 주차 어렵다는 명시.
+- "uncertain": 정보 엇갈리거나 부족.
+
+⚠️ 절대 규칙:
+1. snippet 이 매장과 무관한 다른 장소의 주차 정보일 수 있다. 매장명이 직접 언급되지 않은
+   snippet 은 신뢰도 낮춤 (low).
+2. "주변 주차장" "근처 주차장"은 매장 자체 주차장이 아님. 자체 주차 정보로 인정 X.
+3. 한국에서 "자체주차/전용주차/매장 주차"는 매장이 운영, "공영주차장/노상"은 외부.
+"""
+
+
+def classify_self_parking_from_evidence(
+    dest_name: str,
+    dest_addr: str | None,
+    evidence_snippets: list[str],
+) -> VerifierResult | None:
+    """블로그/리뷰 snippet 들을 LLM 으로 분류해서 자체 주차 가능 여부 판단."""
+    if not is_enabled() or not evidence_snippets:
+        return None
+    # cache key: dest + 처음 snippet 들 hash
+    sig = f"{dest_name}|{(dest_addr or '')[:40]}|{len(evidence_snippets)}|{evidence_snippets[0][:60] if evidence_snippets else ''}"
+    cached = _SELF_CACHE.get(sig)
+    if cached is not None:
+        return cached
+
+    joined = "\n---\n".join(s[:280] for s in evidence_snippets[:6])
+    user_msg = (
+        f"매장명: {dest_name}\n"
+        f"매장 주소: {dest_addr or '미상'}\n\n"
+        f"블로그/리뷰 snippet:\n{joined}\n\n"
+        "위 snippet 으로부터 이 매장의 자체 주차 가능 여부를 분류해줘."
+    )
+    s = get_settings()
+    payload = {
+        "model": s.GROQ_MODEL,
+        "temperature": 0.0,
+        "max_tokens": 220,
+        "response_format": {"type": "json_object"},
+        "messages": [
+            {"role": "system", "content": _SELF_SYSTEM},
+            {"role": "user", "content": user_msg},
+        ],
+    }
+    data = _call_groq(payload, s.GROQ_API_KEY)
+    if not data:
+        return None
+    try:
+        content = data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError):
+        return None
+    # _parse_content 는 verdict 가 open_to_public/restricted/uncertain 기대 — 별도 파싱
+    import json as _json
+
+    s_str = content.strip()
+    if s_str.startswith("```"):
+        s_str = s_str.strip("`")
+        if s_str.lower().startswith("json"):
+            s_str = s_str[4:].lstrip()
+    a = s_str.find("{")
+    b = s_str.rfind("}")
+    if a == -1 or b == -1:
+        return None
+    try:
+        obj = _json.loads(s_str[a : b + 1])
+    except _json.JSONDecodeError:
+        return None
+    v = obj.get("verdict")
+    if v not in ("available", "unavailable", "uncertain"):
+        return None
+    result = VerifierResult(
+        verdict=v,  # type: ignore[arg-type]
+        reason=str(obj.get("reason") or "")[:160],
+        confidence=str(obj.get("confidence") or "medium"),
+    )
+    _SELF_CACHE.set(sig, result)
+    return result
 
 _SUMMARY_SYSTEM = """너는 한국 주차 가능성 판단 결과를 한 줄로 자연스럽게 요약하는
 어시스턴트다. 사용자가 차량 방문 결정에 도움될 한국어 한 문장(최대 80자)으로만 답한다.
