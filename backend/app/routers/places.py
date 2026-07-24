@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..db import get_db
-from ..models import Place, PlaceSelfParkingFeedback
+from ..db import SessionLocal, get_db
+from ..models import Place, PlaceSelfParkingFeedback, SearchLog
 from ..schemas.place import PlaceSearchItem, PlaceSearchResponse
 from ..schemas.self_parking_feedback import (
     SelfParkingFeedbackCreate,
@@ -19,10 +19,25 @@ from ..services.kakao import KakaoAPIError, search_keyword
 router = APIRouter(prefix="/api/places", tags=["places"])
 
 
+def _persist_place_search_log(payload: dict) -> None:
+    """Best-effort analytics insert. Search UX must not fail if logging fails."""
+    try:
+        with SessionLocal() as s:
+            s.add(SearchLog(**payload))
+            s.commit()
+    except Exception as e:  # noqa: BLE001
+        import logging
+
+        logging.getLogger(__name__).warning("place search_log insert failed: %s", e)
+
+
 @router.get("/search", response_model=PlaceSearchResponse)
 def places_search(
+    background: BackgroundTasks,
+    request: Request,
     query: str = Query(..., min_length=1, max_length=80),
     size: int = Query(10, ge=1, le=15),
+    user_token: str | None = Query(None, max_length=64),
     db: Session = Depends(get_db),
 ) -> PlaceSearchResponse:
     try:
@@ -86,6 +101,18 @@ def places_search(
         )
 
     db.commit()
+    background.add_task(
+        _persist_place_search_log,
+        {
+            "place_name": query.strip(),
+            "self_parking_status": "place_search",
+            "top_recommendation_name": items[0].name if items else None,
+            "external_candidate_count": len(items),
+            "user_token": user_token,
+            "user_agent": request.headers.get("user-agent"),
+            "referer": request.headers.get("referer"),
+        },
+    )
 
     # Groq 의도 추천 — 후보가 2개 이상일 때 LLM 이 사용자 의도와 가장 맞는 1개 선정
     ai_best_index: int | None = None

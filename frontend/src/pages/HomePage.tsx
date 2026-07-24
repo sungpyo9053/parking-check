@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { api, FavoriteItemOut } from "../lib/api";
+import { api, FavoriteItemOut, UsageStats } from "../lib/api";
 import { useRecentSearches } from "../hooks/useRecentSearches";
 import DiscoverHot from "../components/DiscoverHot";
 import LandingHeader from "../components/landing/LandingHeader";
@@ -30,6 +30,7 @@ export default function HomePage() {
   const [codeInput, setCodeInput] = useState("");
   const [groupBusy, setGroupBusy] = useState(false);
   const [groupErr, setGroupErr] = useState<string | null>(null);
+  const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
 
   // 초기 로드: localStorage 즐겨찾기 + 그룹 + URL ?fav 자동 가입
   useEffect(() => {
@@ -51,6 +52,21 @@ export default function HomePage() {
       window.history.replaceState({}, "", u.toString());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .usageStats(7)
+      .then((stats) => {
+        if (!cancelled) setUsageStats(stats);
+      })
+      .catch(() => {
+        if (!cancelled) setUsageStats(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function refreshGroup(code: string) {
@@ -375,6 +391,26 @@ export default function HomePage() {
                 >
                   ×
                 </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {usageStats && usageStats.top_searches.length > 0 && (
+        <>
+          <h2 className="h2">최근 7일 인기 검색</h2>
+          <ul className="list">
+            {usageStats.top_searches.slice(0, 6).map((it) => (
+              <li
+                key={it.place_name}
+                className="list-item clickable"
+                onClick={() =>
+                  navigate(`/places?q=${encodeURIComponent(it.place_name)}`)
+                }
+              >
+                <span className="title">{it.place_name}</span>
+                <span className="sub">{it.count}회 검색</span>
               </li>
             ))}
           </ul>

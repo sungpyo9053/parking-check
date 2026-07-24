@@ -9,7 +9,7 @@ from sqlalchemy import inspect
 from .config import get_settings
 from .db import engine
 from .models import SearchLog
-from .routers import discover, favorites, health, parking, places, visits
+from .routers import discover, favorites, health, parking, places, stats, visits
 
 settings = get_settings()
 
@@ -42,6 +42,7 @@ app.include_router(parking.router)
 app.include_router(visits.router)
 app.include_router(discover.router)
 app.include_router(favorites.router)
+app.include_router(stats.router)
 
 
 @app.get("/")

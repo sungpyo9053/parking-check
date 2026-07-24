@@ -1,4 +1,21 @@
 const BASE = import.meta.env.VITE_BACKEND_BASE_URL || "";
+const USER_TOKEN_KEY = "pk_user_token";
+
+function getUserToken(): string {
+  try {
+    let token = localStorage.getItem(USER_TOKEN_KEY);
+    if (!token) {
+      token = (
+        globalThis.crypto?.randomUUID?.() ??
+        `u-${Date.now()}-${Math.random()}`
+      ).slice(0, 40);
+      localStorage.setItem(USER_TOKEN_KEY, token);
+    }
+    return token;
+  } catch {
+    return "anon";
+  }
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const url = path.startsWith("http") ? path : `${BASE}${path}`;
@@ -254,13 +271,41 @@ export type KakaoPlaceDetail = {
   fetched_at_iso: string | null;
 };
 
+export type UsageStats = {
+  days: number;
+  timezone: string;
+  totals: {
+    total_events: number;
+    place_searches: number;
+    parking_analyses: number;
+    unique_tokens: number;
+  };
+  daily: Array<{
+    date: string;
+    total_events: number;
+    place_searches: number;
+    parking_analyses: number;
+    unique_tokens: number;
+  }>;
+  top_searches: Array<{ place_name: string; count: number }>;
+};
+
 export const api = {
-  searchPlaces: (query: string, size = 10) =>
-    request<{
+  searchPlaces: (query: string, size = 10) => {
+    const q = new URLSearchParams({
+      query,
+      size: String(size),
+      user_token: getUserToken(),
+    });
+    return request<{
       items: PlaceItem[];
       ai_best_index: number | null;
       ai_reason: string | null;
-    }>(`/api/places/search?query=${encodeURIComponent(query)}&size=${size}`),
+    }>(`/api/places/search?${q.toString()}`);
+  },
+
+  usageStats: (days = 7) =>
+    request<UsageStats>(`/api/stats/usage?days=${days}`),
 
   kakaoDetail: (kakaoPlaceId: string) =>
     request<KakaoPlaceDetail | null>(
@@ -308,6 +353,7 @@ export const api = {
     if (params.lng != null) q.set("lng", String(params.lng));
     if (params.radius) q.set("radius", String(params.radius));
     if (params.name) q.set("name", params.name);
+    q.set("user_token", getUserToken());
     return request<AnalyzeResponse>(`/api/parking/analyze?${q.toString()}`);
   },
 
