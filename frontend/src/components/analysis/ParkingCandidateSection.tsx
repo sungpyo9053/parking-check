@@ -66,7 +66,7 @@ function normalizeExternal(
     routeSource: e.walking_route_source ?? null,
     address: e.road_address || e.address || null,
     feeLabel:
-      e.fee_summary === "확인 필요"
+      !e.fee_summary || e.fee_summary === "확인 필요"
         ? "요금 확인 필요"
         : `요금 ${e.fee_summary}`,
     realtimeLabel: e.realtime_status,

@@ -65,6 +65,7 @@ export default function KakaoMap({
   const mapRef = useRef<any>(null);
   const overlaysRef = useRef<any[]>([]);
   const popupRef = useRef<any>(null);
+  const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null);
   // SDK 로드 + Map 인스턴스 준비 완료 신호 — markers effect 의 의존성으로 사용해서
   // race condition (data 가 SDK 보다 먼저 도착해 첫 markers effect 가 mapRef=null
   // 로 빠지는 케이스) 방지
@@ -106,6 +107,7 @@ export default function KakaoMap({
         popupRef.current.setMap(null);
         popupRef.current = null;
       }
+      setSelectedMarker(null);
     };
     window.__pkOpenFootRoute = (fromLat, fromLng, fromName) => {
       if (destinationLat == null || destinationLng == null) return;
@@ -134,6 +136,7 @@ export default function KakaoMap({
       popupRef.current.setMap(null);
       popupRef.current = null;
     }
+    setSelectedMarker(null);
 
     const bounds = new k.maps.LatLngBounds();
     let added = 0;
@@ -197,6 +200,7 @@ export default function KakaoMap({
           event.preventDefault();
           event.stopPropagation();
           showPopup(k, mapRef.current, m);
+          setSelectedMarker(m);
         });
       }
 
@@ -206,6 +210,7 @@ export default function KakaoMap({
         yAnchor: 1,
         xAnchor: 0.5,
         zIndex: isRec ? 7 : isDest ? 5 : 3,
+        clickable: true,
       });
       overlay.setMap(mapRef.current);
       overlaysRef.current.push(overlay);
@@ -219,6 +224,7 @@ export default function KakaoMap({
         clickMarker.setMap(mapRef.current);
         k.maps.event.addListener(clickMarker, "click", () => {
           showPopup(k, mapRef.current, m);
+          setSelectedMarker(m);
         });
         overlaysRef.current.push(clickMarker);
       }
@@ -303,9 +309,87 @@ export default function KakaoMap({
     }
   }, [markers, destinationLat, destinationLng, destinationName, mapReady]);
 
+  const panelDetail = selectedMarker?.detail;
+  const panelCanRoute =
+    selectedMarker &&
+    panelDetail &&
+    destinationLat != null &&
+    destinationLng != null &&
+    selectedMarker.kind !== "destination" &&
+    selectedMarker.kind !== "current";
+
   return (
-    <div ref={ref} className={`map-wrap${className ? ` ${className}` : ""}`} />
+    <div className="map-shell">
+      <div ref={ref} className={`map-wrap${className ? ` ${className}` : ""}`} />
+      {selectedMarker && panelDetail && (
+        <div className="map-info-panel">
+          <button
+            type="button"
+            className="map-info-close"
+            aria-label="마커 정보 닫기"
+            onClick={() => {
+              if (popupRef.current) {
+                popupRef.current.setMap(null);
+                popupRef.current = null;
+              }
+              setSelectedMarker(null);
+            }}
+          >
+            ×
+          </button>
+          <div className="map-info-title">{panelDetail.name}</div>
+          <div className="map-info-row">
+            {panelDetail.usabilityLabel || markerKindLabel(selectedMarker)}
+          </div>
+          <div className="map-info-meta">
+            {markerDistanceText(selectedMarker, panelDetail)}
+          </div>
+          {panelCanRoute && (
+            <button
+              type="button"
+              className="map-info-route"
+              onClick={() =>
+                openKakaoFootRoute(
+                  {
+                    lat: selectedMarker.lat,
+                    lng: selectedMarker.lng,
+                    name: panelDetail.name,
+                  },
+                  {
+                    lat: destinationLat,
+                    lng: destinationLng,
+                    name: destinationName || "목적지",
+                  },
+                )
+              }
+            >
+              카카오맵 도보 길찾기
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
+}
+
+function markerKindLabel(marker: MapMarker): string {
+  if (marker.kind === "destination") return "목적지";
+  if (marker.kind === "current") return "현재 위치";
+  if (marker.kind === "hot") return "추천 장소";
+  if (marker.kind === "recommended") return "1순위 추천";
+  return "주차장 후보";
+}
+
+function markerDistanceText(marker: MapMarker, detail: MapMarkerDetail): string {
+  if (marker.kind === "destination") return "선택한 목적지입니다.";
+  if (marker.kind === "current") return "현재 위치입니다.";
+  const sourceLabel =
+    detail.routeSource === "osrm" ? "실 도보 경로" : "직선거리 기준";
+  if (detail.distanceM != null && detail.walkingMinutes != null) {
+    return `${detail.distanceM}m · ${sourceLabel} 도보 약 ${detail.walkingMinutes}분`;
+  }
+  if (detail.distanceM != null) return `${detail.distanceM}m`;
+  return "거리 정보 없음";
 }
 
 function escapeHtml(s: string): string {

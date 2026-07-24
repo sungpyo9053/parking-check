@@ -136,7 +136,7 @@ export default function PlanACard({ data, destName }: Props) {
         )}
       </div>
       {/* 카카오맵 detail — 요금/시간/면수/결제. 우리 디자인. */}
-      {kakaoPid && (
+      {kakaoPid ? (
         <div className="top-rec-detail">
           {detail === undefined && (
             <div className="top-rec-detail-skeleton">
@@ -205,6 +205,11 @@ export default function PlanACard({ data, destName }: Props) {
               )}
             </ul>
           )}
+        </div>
+      ) : (
+        <div className="top-rec-detail-empty top-rec-detail-standalone">
+          이 추천 후보는 요금·운영시간 상세 데이터가 아직 없습니다. 방문 전
+          지도 앱이나 현장 안내판에서 최종 확인이 필요합니다.
         </div>
       )}
 

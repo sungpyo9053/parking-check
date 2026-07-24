@@ -243,10 +243,11 @@ export default function ParkingCandidateCard(props: ParkingCandidateCardProps) {
         </div>
       )}
 
-      {!isExcluded && hasCoords && (feeLabel || realtimeLabel) && (
-        <div className="meta muted">
-          {feeLabel || "요금 확인 필요"}
-          {realtimeLabel ? ` · ${realtimeLabel}` : ""}
+      {!isExcluded && hasCoords && (
+        <div className="pcard-info-strip">
+          <span>{feeLabel || "요금 확인 필요"}</span>
+          <span>{realtimeLabel || "실시간 정보 없음"}</span>
+          <span>운영시간 확인 필요</span>
         </div>
       )}
 
@@ -260,8 +261,15 @@ export default function ParkingCandidateCard(props: ParkingCandidateCardProps) {
       )}
 
       {/* 카카오 detail expand — lazy fetch (펼치면 그 카드만 호출) */}
-      {!isExcluded && externalUrl && extractKakaoPid(externalUrl) && (
-        <DetailExpandable kakaoPid={extractKakaoPid(externalUrl)!} />
+      {!isExcluded && (
+        externalUrl && extractKakaoPid(externalUrl) ? (
+          <DetailExpandable kakaoPid={extractKakaoPid(externalUrl)!} />
+        ) : (
+          <div className="pcard-detail-empty pcard-detail-inline">
+            요금·운영시간 상세 데이터가 아직 없습니다. 지도 앱이나 현장 안내판
+            확인이 필요합니다.
+          </div>
+        )
       )}
 
       {!isExcluded && (
