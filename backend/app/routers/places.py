@@ -106,7 +106,6 @@ def places_search(
         {
             "place_name": query.strip(),
             "self_parking_status": "place_search",
-            "top_recommendation_name": items[0].name if items else None,
             "external_candidate_count": len(items),
             "user_token": user_token,
             "user_agent": request.headers.get("user-agent"),

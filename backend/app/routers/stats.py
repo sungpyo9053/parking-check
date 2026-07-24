@@ -239,6 +239,7 @@ def usage_stats(
                       AND place_name <> ''
                       AND top_recommendation_name IS NOT NULL
                       AND top_recommendation_name <> ''
+                      AND self_parking_status IS DISTINCT FROM 'place_search'
                       AND (searched_at AT TIME ZONE 'Asia/Seoul') >= bounds.start_day
                       AND (searched_at AT TIME ZONE 'Asia/Seoul') < bounds.end_day
                     GROUP BY place_name, top_recommendation_name
