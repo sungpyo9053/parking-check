@@ -190,9 +190,19 @@ export default function KakaoMap({
            </div>`;
       }
 
+      const pinEl = document.createElement("div");
+      pinEl.innerHTML = pinHtml;
+      if (m.detail) {
+        pinEl.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          showPopup(k, mapRef.current, m);
+        });
+      }
+
       const overlay = new k.maps.CustomOverlay({
         position: pos,
-        content: pinHtml,
+        content: pinEl,
         yAnchor: 1,
         xAnchor: 0.5,
         zIndex: isRec ? 7 : isDest ? 5 : 3,
@@ -200,15 +210,8 @@ export default function KakaoMap({
       overlay.setMap(mapRef.current);
       overlaysRef.current.push(overlay);
 
-      // 주차장 마커 클릭 → CustomOverlay 팝업 (current/dest 제외)
-      if (!isDest && !isCurrent && m.detail) {
-        // CustomOverlay 의 content 가 DOM 일 때 직접 이벤트 바인딩 가능
-        // 여기서는 HTML 문자열이므로 inline onclick + 전역 핸들러 사용
-        const el = (overlay as any).getContent
-          ? (overlay as any).getContent()
-          : null;
-        // Kakao CustomOverlay 의 getContent 는 환경에 따라 string 일 수 있음.
-        // 대안: 보이지 않는 Marker 를 추가해서 클릭 이벤트만 받음.
+      // 지도 기본 Marker 클릭도 같이 받는다. 라벨 가장자리 클릭 실패를 줄이기 위한 보조.
+      if (m.detail) {
         const clickMarker = new k.maps.Marker({
           position: pos,
           opacity: 0.001, // 거의 안 보이지만 클릭 가능
@@ -218,7 +221,6 @@ export default function KakaoMap({
           showPopup(k, mapRef.current, m);
         });
         overlaysRef.current.push(clickMarker);
-        void el; // unused
       }
 
       bounds.extend(pos);
@@ -241,13 +243,21 @@ export default function KakaoMap({
       const sourceLabel =
         d.routeSource === "osrm" ? "실 도보 경로" : "직선거리 기준";
       const distText =
-        d.distanceM != null && d.walkingMinutes != null
+        marker.kind === "destination"
+          ? "선택한 목적지"
+          : marker.kind === "current"
+            ? "현재 위치"
+            : d.distanceM != null && d.walkingMinutes != null
           ? `${d.distanceM}m · ${sourceLabel} 도보 약 ${d.walkingMinutes}분`
           : d.distanceM != null
             ? `${d.distanceM}m`
             : "거리 정보 없음";
 
-      const canRoute = destinationLat != null && destinationLng != null;
+      const canRoute =
+        destinationLat != null &&
+        destinationLng != null &&
+        marker.kind !== "destination" &&
+        marker.kind !== "current";
       const popupHtml = `
         <div class="map-popup" style="
           background:#fff; border:1px solid #d1d5db; border-radius:10px;

@@ -309,6 +309,12 @@ export default function AnalysisPage() {
         lng: data.destination.lng,
         label: "목적지",
         kind: "destination",
+        detail: {
+          name: data.destination.name || placeName || "목적지",
+          usabilityLabel: "목적지",
+          distanceM: 0,
+          walkingMinutes: 0,
+        },
       },
     ];
     if (tr && recLat != null && recLng != null) {

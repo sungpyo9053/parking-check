@@ -173,6 +173,10 @@ export default function DiscoverHot() {
         lat: coord.lat,
         lng: coord.lng,
         kind: "current",
+        detail: {
+          name: "현위치",
+          usabilityLabel: "현재 위치",
+        },
       },
     ];
     data.items.forEach((it, idx) => {
