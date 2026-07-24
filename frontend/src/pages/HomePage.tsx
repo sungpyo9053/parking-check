@@ -417,6 +417,81 @@ export default function HomePage() {
         </>
       )}
 
+      {usageStats &&
+        usageStats.popular_segments.parking_hard.length > 0 && (
+          <>
+            <h2 className="h2">주차 확인이 많이 필요한 장소</h2>
+            <ul className="list">
+              {usageStats.popular_segments.parking_hard.map((it) => (
+                <li
+                  key={`hard-${it.place_name}`}
+                  className="list-item clickable"
+                  onClick={() =>
+                    navigate(`/places?q=${encodeURIComponent(it.place_name)}`)
+                  }
+                >
+                  <span className="title">{it.place_name}</span>
+                  <span className="sub">대체 주차장 확인이 필요한 검색 {it.count}회</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
+      {usageStats &&
+        usageStats.popular_segments.self_parking_likely.length > 0 && (
+          <>
+            <h2 className="h2">자체 주차 가능성이 높은 인기 장소</h2>
+            <ul className="list">
+              {usageStats.popular_segments.self_parking_likely.map((it) => (
+                <li
+                  key={`self-${it.place_name}`}
+                  className="list-item clickable"
+                  onClick={() =>
+                    navigate(`/places?q=${encodeURIComponent(it.place_name)}`)
+                  }
+                >
+                  <span className="title">{it.place_name}</span>
+                  <span className="sub">자체 주차 가능 판단 {it.count}회</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
+      {usageStats &&
+        usageStats.popular_segments.alternative_recommended.length > 0 && (
+          <>
+            <h2 className="h2">대체 주차장 추천이 붙은 장소</h2>
+            <ul className="list">
+              {usageStats.popular_segments.alternative_recommended.map((it) => (
+                <li
+                  key={`alt-${it.place_name}-${it.parking_name}`}
+                  className="list-item clickable"
+                  onClick={() =>
+                    navigate(`/places?q=${encodeURIComponent(it.place_name)}`)
+                  }
+                >
+                  <span className="title">{it.place_name}</span>
+                  <span className="sub">
+                    추천 주차장: {it.parking_name} · {it.count}회
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
+      {usageStats?.parking_data.needs_import && (
+        <div className="empty-card">
+          <div className="empty-title">주차장 DB 보강 필요</div>
+          <div className="empty-detail">
+            운영 DB의 공식 주차장 데이터가 비어 있어 지도 검색 후보에 더 의존하고
+            있습니다.
+          </div>
+        </div>
+      )}
+
       <h2 className="h2">최근 검색</h2>
       {items.length === 0 ? (
         <p className="muted" style={{ fontSize: 13 }}>

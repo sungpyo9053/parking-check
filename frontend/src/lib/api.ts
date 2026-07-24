@@ -288,6 +288,29 @@ export type UsageStats = {
     unique_tokens: number;
   }>;
   top_searches: Array<{ place_name: string; count: number }>;
+  popular_segments: {
+    self_parking_likely: Array<{ place_name: string; count: number }>;
+    parking_hard: Array<{ place_name: string; count: number }>;
+    alternative_recommended: Array<{
+      place_name: string;
+      parking_name: string;
+      count: number;
+    }>;
+  };
+  parking_data: {
+    parking_lot_count: number;
+    latest_data_reference_date: string | null;
+    latest_created_at: string | null;
+    needs_import: boolean;
+  };
+  security: {
+    available: boolean;
+    reason?: string;
+    total_requests?: number;
+    bot_or_scan_requests?: number;
+    top_suspicious_paths?: Array<{ path: string; count: number }>;
+    status_counts?: Array<{ status: string; count: number }>;
+  };
 };
 
 export const api = {

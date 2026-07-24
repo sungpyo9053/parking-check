@@ -766,18 +766,28 @@ button {
   border-radius: 8px;
   font-size: 12px;
 }
+.sp-feedback-prominent {
+  margin-top: 10px;
+  padding: 10px;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
 .sp-feedback-q {
-  color: var(--muted);
+  color: #1f2937;
+  font-weight: 700;
   margin-bottom: 6px;
 }
 .sp-feedback-buttons {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
 }
 .sp-feedback-buttons .btn {
   padding: 6px 10px;
   font-size: 12px;
-  flex: 1;
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.25;
 }
 .sp-feedback .sp-yes {
   border-color: #16a34a;

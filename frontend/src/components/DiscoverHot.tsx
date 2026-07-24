@@ -204,7 +204,7 @@ export default function DiscoverHot() {
     <div className="discover-block">
       <div className="discover-head">
         <h2 className="h2" style={{ margin: 0 }}>
-          주변 핫플
+          현위치 맛집·카페
         </h2>
         {coord && (
           <span className="muted" style={{ fontSize: 11 }}>
@@ -214,8 +214,8 @@ export default function DiscoverHot() {
         )}
       </div>
       <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-        현위치 기준 인스타에서 자주 언급되는 카페/맛집/가볼곳 추천 (Tavily 웹
-        검색 기반).
+        카카오 장소 후보에 네이버 블로그·카페 후기, YouTube 조회 신호, 웹 추천 글을
+        더해 고릅니다.
       </p>
 
       {!coord && (
@@ -246,7 +246,7 @@ export default function DiscoverHot() {
 
       {error && <p className="error">{error}</p>}
       {loading && coord && active && (
-        <p className="muted">⏳ 인스타 언급 분석 중…</p>
+        <p className="muted">⏳ 주변 후기와 주차 정보를 같이 확인 중…</p>
       )}
 
       {data && data.items.length === 0 && !loading && (

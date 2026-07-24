@@ -33,6 +33,45 @@ export default function SelfParkingCard({
       </div>
       <div className="self-card-line">{copy.line}</div>
 
+      {data.destination.place_id && (
+        <div className="sp-feedback sp-feedback-prominent">
+          <div className="sp-feedback-q">
+            이 판단이 맞나요? 실제 방문했다면 바로 제보해주세요.
+          </div>
+          <div className="sp-feedback-buttons">
+            <button
+              className="btn sp-yes"
+              disabled={feedbackBusy}
+              onClick={() => onFeedback("yes")}
+            >
+              ✓ 자체 주차 있었음
+            </button>
+            <button
+              className="btn sp-no"
+              disabled={feedbackBusy}
+              onClick={() => onFeedback("no")}
+            >
+              ✗ 자체 주차 없었음
+            </button>
+            <button
+              className="btn sp-unk"
+              disabled={feedbackBusy}
+              onClick={() => onFeedback("unknown")}
+            >
+              ? 모르겠음
+            </button>
+          </div>
+          <div className="sp-feedback-stats">
+            누적 응답 {feedbackStats?.total ?? 0}: ✓{" "}
+            {feedbackStats?.yes_count ?? 0} · ✗ {feedbackStats?.no_count ?? 0} ·
+            ? {feedbackStats?.unknown_count ?? 0}
+            {feedbackJustSent && (
+              <span style={{ color: "#16a34a" }}> · 응답 저장됨</span>
+            )}
+          </div>
+        </div>
+      )}
+
       {data.self_parking.summary_natural && (
         <div className="self-card-quote">
           💬 {data.self_parking.summary_natural}
@@ -51,44 +90,6 @@ export default function SelfParkingCard({
             )}
           </div>
         )}
-
-      {data.destination.place_id && (
-        <div className="sp-feedback">
-          <div className="sp-feedback-q">실제로 자체 주차 가능했나요?</div>
-          <div className="sp-feedback-buttons">
-            <button
-              className="btn sp-yes"
-              disabled={feedbackBusy}
-              onClick={() => onFeedback("yes")}
-            >
-              ✓ 있었음
-            </button>
-            <button
-              className="btn sp-no"
-              disabled={feedbackBusy}
-              onClick={() => onFeedback("no")}
-            >
-              ✗ 없었음
-            </button>
-            <button
-              className="btn sp-unk"
-              disabled={feedbackBusy}
-              onClick={() => onFeedback("unknown")}
-            >
-              ? 모름
-            </button>
-          </div>
-          {(feedbackStats?.total ?? 0) > 0 && (
-            <div className="sp-feedback-stats">
-              누적 응답 {feedbackStats?.total}: ✓ {feedbackStats?.yes_count} · ✗{" "}
-              {feedbackStats?.no_count} · ? {feedbackStats?.unknown_count}
-              {feedbackJustSent && (
-                <span style={{ color: "#16a34a" }}> · 응답 저장됨</span>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       {data.self_parking.evidence && data.self_parking.evidence.length > 0 && (
         <details className="self-evidence">
