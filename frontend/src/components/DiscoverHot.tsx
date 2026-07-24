@@ -7,6 +7,7 @@ import {
   HotPlaceItem,
 } from "../lib/api";
 import KakaoMap, { MapMarker } from "./KakaoMap";
+import { openNaverSearch } from "../lib/naverSearch";
 
 type ParkingMini =
   | { state: "loading" }
@@ -37,6 +38,18 @@ function viewLabel(views: number): string {
   if (views >= 10_000) return "높음";
   if (views > 0) return "있음";
   return "없음";
+}
+
+function reviewSummary(it: HotPlaceItem): string {
+  const signals: string[] = [];
+  if (it.naver_mentions > 0) signals.push(`네이버 후기 ${it.naver_mentions}건`);
+  if (it.youtube_total_views > 0)
+    signals.push(`YouTube 조회 신호 ${viewLabel(it.youtube_total_views)}`);
+  if (it.tavily_mentions > 0) signals.push(`웹 추천 글 ${it.tavily_mentions}건`);
+  if (signals.length === 0) {
+    return "지도 후보와 거리 기준으로 먼저 고른 장소입니다. 방문 전 최신 후기를 한 번 더 확인해 보세요.";
+  }
+  return `${signals.join(" · ")} 기준으로 주변에서 확인된 장소입니다. 주차는 아래 미리보기와 상세 분석을 같이 보세요.`;
 }
 
 const CATS: { key: Category; label: string; emoji: string }[] = [
@@ -391,6 +404,8 @@ export default function DiscoverHot() {
                 );
               })()}
 
+              <div className="hot-ai-summary">{reviewSummary(it)}</div>
+
               <div className="actions">
                 <button
                   className="btn primary"
@@ -400,6 +415,16 @@ export default function DiscoverHot() {
                 </button>
                 <button className="btn" onClick={() => openKakaoMap(it)}>
                   카카오맵에서 보기
+                </button>
+                <button
+                  className="btn"
+                  onClick={() =>
+                    openNaverSearch(
+                      `${it.name} ${data.region || ""} 맛집 카페 주차 후기`,
+                    )
+                  }
+                >
+                  네이버 후기 더 보기
                 </button>
               </div>
             </li>

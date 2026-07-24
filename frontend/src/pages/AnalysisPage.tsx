@@ -31,6 +31,7 @@ import AskAiCard from "../components/analysis/AskAiCard";
 import VehicleVsTransitCard from "../components/analysis/VehicleVsTransitCard";
 import { applySeo } from "../lib/seo";
 import { buildParkingResult } from "../utils/parkingResult";
+import { openNaverSearch } from "../lib/naverSearch";
 
 function getUserToken(): string {
   try {
@@ -444,6 +445,7 @@ export default function AnalysisPage() {
   const selfCopy = data ? selfParkingCopy(data) : null;
   const dest = data?.destination;
   const destName = data?.destination.name || placeName || "목적지";
+  const naverAiQuery = `${destName} 자체 주차 가능 여부 주차장 후기 근처 공영주차장`;
 
   const hasCoords = (e: ExternalCandidate) => e.lat != null && e.lng != null;
   const usableExt: ExternalCandidate[] = data
@@ -579,6 +581,24 @@ export default function AnalysisPage() {
                 topRecName={data.top_recommendation?.candidate.name ?? null}
                 topWalkMin={data.top_recommendation?.candidate.walking_minutes ?? null}
               />
+
+              <div className="external-ai-card">
+                <div className="external-ai-head">
+                  <span className="external-ai-title">네이버 AI/검색으로 더 확인</span>
+                  <span className="rcard-tag">외부 확인</span>
+                </div>
+                <div className="external-ai-copy">
+                  {data.analysis_summary ||
+                    "블로그·지도 검색 결과와 함께 자체 주차, 주변 공영주차장, 최근 후기를 더 확인할 수 있습니다."}
+                </div>
+                <button
+                  type="button"
+                  className="btn external-ai-btn"
+                  onClick={() => openNaverSearch(naverAiQuery)}
+                >
+                  네이버에서 후기 더 보기
+                </button>
+              </div>
 
               {/* 판단 근거 */}
               <JudgmentReasonCard result={parkingResult} />
