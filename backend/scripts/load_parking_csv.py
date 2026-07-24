@@ -1,6 +1,6 @@
 """전국주차장정보표준데이터 CSV 적재기.
 
-원천: https://www.data.go.kr/data/15012890/standard.do
+원천: https://www.data.go.kr/data/15012896/standard.do
 컬럼명은 시점에 따라 한국어/영문이 혼재할 수 있어 후보 컬럼명을 여러 개 시도한다.
 실제 컬럼명이 다르면 COLUMN_CANDIDATES 를 수정해라.
 
@@ -214,7 +214,7 @@ def upsert(conn, row: dict):
                     :fee_type, :base_time, :base_fee, :extra_time, :extra_fee,
                     :phone, :has_disabled_parking, :data_reference_date
                 )
-                ON CONFLICT (source, source_id)
+                ON CONFLICT (source, source_id) WHERE source_id IS NOT NULL
                 DO UPDATE SET
                     name = EXCLUDED.name,
                     type = EXCLUDED.type,
