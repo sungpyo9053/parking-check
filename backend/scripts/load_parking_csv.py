@@ -25,29 +25,49 @@ from app.db import SessionLocal, engine  # noqa: E402
 
 
 COLUMN_CANDIDATES = {
-    "source_id": ["관리번호", "주차장관리번호", "PRKPLCE_NO"],
-    "name": ["주차장명", "PRKPLCE_NM"],
-    "type": ["주차장구분", "PRKPLCE_SE"],
-    "parking_type": ["주차장유형", "PRKPLCE_TYPE"],
-    "road_address": ["소재지도로명주소", "ROAD_NM_ADDR"],
-    "jibun_address": ["소재지지번주소", "LNM_ADDR"],
-    "lat": ["위도", "LAT"],
-    "lng": ["경도", "LOT", "LNG"],
-    "capacity": ["주차구획수", "PRK_CMPRT_CO"],
-    "weekday_open_time": ["평일운영시작시각", "WD_OPER_BGNG_TM"],
-    "weekday_close_time": ["평일운영종료시각", "WD_OPER_END_TM"],
-    "saturday_open_time": ["토요일운영시작시각", "SAT_OPER_BGNG_TM"],
-    "saturday_close_time": ["토요일운영종료시각", "SAT_OPER_END_TM"],
-    "holiday_open_time": ["공휴일운영시작시각", "HOLIDAY_OPER_BGNG_TM"],
-    "holiday_close_time": ["공휴일운영종료시각", "HOLIDAY_OPER_END_TM"],
-    "fee_type": ["요금정보", "PRK_TYPE"],
-    "base_time": ["주차기본시간", "BSC_PRK_HM"],
-    "base_fee": ["주차기본요금", "BSC_PRK_CRG"],
-    "extra_time": ["추가단위시간", "ADD_UNIT_TM"],
-    "extra_fee": ["추가단위요금", "ADD_UNIT_CRG"],
-    "phone": ["전화번호", "TELNO"],
-    "has_disabled_parking": ["장애인전용주차구역수", "DSBL_PWDBS_PRK_CMPRT_CO"],
-    "data_reference_date": ["데이터기준일자", "REFER_DE"],
+    "source_id": ["관리번호", "주차장관리번호", "PRKPLCE_NO", "prkplceNo"],
+    "name": ["주차장명", "PRKPLCE_NM", "prkplceNm"],
+    "type": ["주차장구분", "PRKPLCE_SE", "prkplceSe"],
+    "parking_type": ["주차장유형", "PRKPLCE_TYPE", "prkplceType"],
+    "road_address": ["소재지도로명주소", "ROAD_NM_ADDR", "rdnmadr"],
+    "jibun_address": ["소재지지번주소", "LNM_ADDR", "lnmadr"],
+    "lat": ["위도", "LAT", "latitude"],
+    "lng": ["경도", "LOT", "LNG", "longitude"],
+    "capacity": ["주차구획수", "PRK_CMPRT_CO", "prkcmprt"],
+    "weekday_open_time": ["평일운영시작시각", "WD_OPER_BGNG_TM", "weekdayOperOpenHhmm"],
+    "weekday_close_time": [
+        "평일운영종료시각",
+        "WD_OPER_END_TM",
+        "weekdayOperColseHhmm",
+        "weekdayOperCloseHhmm",
+    ],
+    "saturday_open_time": [
+        "토요일운영시작시각",
+        "SAT_OPER_BGNG_TM",
+        "satOperOperOpenHhmm",
+        "satOperOpenHhmm",
+    ],
+    "saturday_close_time": ["토요일운영종료시각", "SAT_OPER_END_TM", "satOperCloseHhmm"],
+    "holiday_open_time": ["공휴일운영시작시각", "HOLIDAY_OPER_BGNG_TM", "holidayOperOpenHhmm"],
+    "holiday_close_time": [
+        "공휴일운영종료시각",
+        "HOLIDAY_OPER_END_TM",
+        "holidayCloseOpenHhmm",
+        "holidayOperCloseHhmm",
+    ],
+    "fee_type": ["요금정보", "PRK_TYPE", "parkingchrgeInfo"],
+    "base_time": ["주차기본시간", "BSC_PRK_HM", "basicTime"],
+    "base_fee": ["주차기본요금", "BSC_PRK_CRG", "basicCharge"],
+    "extra_time": ["추가단위시간", "ADD_UNIT_TM", "addUnitTime"],
+    "extra_fee": ["추가단위요금", "ADD_UNIT_CRG", "addUnitCharge"],
+    "phone": ["전화번호", "TELNO", "phoneNumber"],
+    "has_disabled_parking": [
+        "장애인전용주차구역수",
+        "장애인전용주차구역보유여부",
+        "DSBL_PWDBS_PRK_CMPRT_CO",
+        "pwdbsPpkZoneYn",
+    ],
+    "data_reference_date": ["데이터기준일자", "REFER_DE", "referenceDate"],
 }
 
 
@@ -101,6 +121,17 @@ def parse_date(v: str | None):
     return None
 
 
+def parse_bool_or_positive_int(v: str | None) -> bool:
+    if not v:
+        return False
+    normalized = v.strip().lower()
+    if normalized in {"y", "yes", "true", "보유", "있음", "유"}:
+        return True
+    if normalized in {"n", "no", "false", "미보유", "없음", "무"}:
+        return False
+    return (parse_int(v) or 0) > 0
+
+
 def upsert(conn, row: dict):
     lat = parse_float(pick(row, "lat"))
     lng = parse_float(pick(row, "lng"))
@@ -137,7 +168,7 @@ def upsert(conn, row: dict):
         "extra_time": parse_int(pick(row, "extra_time")),
         "extra_fee": parse_int(pick(row, "extra_fee")),
         "phone": pick(row, "phone"),
-        "has_disabled_parking": (parse_int(pick(row, "has_disabled_parking")) or 0) > 0,
+        "has_disabled_parking": parse_bool_or_positive_int(pick(row, "has_disabled_parking")),
         "data_reference_date": parse_date(pick(row, "data_reference_date")),
     }
 
